@@ -9,8 +9,11 @@ using Newtonsoft.Json.Linq;
 using System.Diagnostics;
 using System.Security.Policy;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Xml;
+using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
 namespace EasyClaimsCore.API.Services
 {
@@ -290,7 +293,7 @@ namespace EasyClaimsCore.API.Services
 
             var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(
                 JsonConvert.SerializeObject(payload), _cipherKey);
-            
+
             ClearHeaders();
             AddHeaders(new Dictionary<string, string> { { "token", newtoken } });
 
@@ -317,58 +320,69 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteServerDateTimeAsync(TokenCredentialsRequest request)
         {
-            var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-
-            var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
-            httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("token", token);
-
+            var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            ClearHeaders();
+            AddHeaders(new Dictionary<string, string> { { "token", newtoken } });
             var url = $"{_restBaseUrl}PHIC/Claims3.0/getServerDateTime";
-            var response = await httpClient.GetAsync(url);
+            //var response = await httpClient.GetAsync(url);
+            var response = await MakeGetRequestAsync(url);
 
             if (response.IsSuccessStatusCode)
             {
                 var tokenResponseJson = await response.Content.ReadAsStringAsync();
-                using var doc = System.Text.Json.JsonDocument.Parse(tokenResponseJson);
-                var root = doc.RootElement;
-                var resultJson = root.GetProperty("result").GetString();
+                var jsonObject = JsonConvert.DeserializeObject<dynamic>(tokenResponseJson);   //change made on 02-24-2025 after PHIC made some eSOA validation fixing
 
-                if (!string.IsNullOrEmpty(resultJson))
+                JsonDocument doc = JsonDocument.Parse(tokenResponseJson);
+                JsonElement root = doc.RootElement;
+
+                // Step 2: Extract the "result" string
+                string resultJson = root.GetProperty("result").GetString();
+
+                // Step 3: Parse the nested JSON
+                JsonDocument innerDoc = JsonDocument.Parse(resultJson);
+                JsonElement innerRoot = innerDoc.RootElement;
+
+                // Step 4: Extract and convert the "datetime" value
+                string datetimeStr = innerRoot.GetProperty("datetime").GetString();
+                DateTime parsedDateTime = DateTime.ParseExact(datetimeStr, "MM/dd/yyyy hh:mm:ss tt", null);
+
+                return new
                 {
-                    using var innerDoc = System.Text.Json.JsonDocument.Parse(resultJson);
-                    var innerRoot = innerDoc.RootElement;
-                    var datetimeStr = innerRoot.GetProperty("datetime").GetString();
-
-                    return new
-                    {
-                        Message = "SearchServerDateTime successfully retrieved",
-                        Result = datetimeStr,
-                        Success = true
-                    };
-                }
+                    Message = "SearchServerDateTime successfully retrieved",
+                    Result = datetimeStr,
+                    Success = true
+                };
             }
-
             throw new ExternalApiException($"Server datetime request failed with status: {response.StatusCode}");
         }
 
         private async Task<object> ExecuteDatabaseDateTimeAsync(TokenCredentialsRequest request)
         {
-            var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-
-            var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
-            httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("token", token);
-
+            var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            ClearHeaders();
+            AddHeaders(new Dictionary<string, string> { { "token", newtoken } });
             var url = $"{_restBaseUrl}PHIC/Claims3.0/getDBServerDateTime";
-            var response = await httpClient.GetAsync(url);
+            var response = await MakeGetRequestAsync(url);
 
             if (response.IsSuccessStatusCode)
             {
-                var tokenResponseJson = await response.Content.ReadAsStringAsync();
-                var jsonObject = JsonConvert.DeserializeObject<dynamic>(tokenResponseJson);
-                string formattedJson = JsonConvert.SerializeObject(jsonObject, Newtonsoft.Json.Formatting.Indented);
+                string tokenResponseJson = await response.Content.ReadAsStringAsync();
 
-                return new { Result = formattedJson };
+                // Deserialize outer JSON
+                var jsonObject = JsonConvert.DeserializeObject<OuterRaw>(tokenResponseJson);
+
+                // Deserialize the 'result' string into actual array
+                var resultArray = JsonConvert.DeserializeObject<ServerInfo[]>(jsonObject.Result);
+
+                // Return sanitized object
+                var sanitizedResponse = new Outer
+                {
+                    Message = jsonObject.Message,
+                    Result = resultArray,
+                    Success = jsonObject.Success
+                };
+
+                return sanitizedResponse;
             }
 
             throw new ExternalApiException($"Database datetime request failed with status: {response.StatusCode}");
@@ -1110,6 +1124,14 @@ namespace EasyClaimsCore.API.Services
             return response;
         }
 
+        private async Task<HttpResponseMessage> MakeGetRequestAsync(string url)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var response = await NewHttpClientFactory.Instance.GetAsync(url);
+            stopwatch.Stop();
+            return response;
+        }
+
         private void AddHeaders(Dictionary<string, string> headers)
         {
             foreach (var header in headers)
@@ -1134,6 +1156,42 @@ namespace EasyClaimsCore.API.Services
             public string Message { get; set; } = string.Empty;
             public object? Result { get; set; }
             public bool Success { get; set; }
+        }
+
+        public class Outer
+        {
+            [JsonProperty("message")]
+            public string Message { get; set; }
+
+            [JsonProperty("result")]
+            public ServerInfo[] Result { get; set; }
+
+            [JsonProperty("success")]
+            public bool Success { get; set; }
+        }
+
+        private class OuterRaw
+        {
+            [JsonProperty("message")]
+            public string Message { get; set; }
+
+            [JsonProperty("result")]
+            public string Result { get; set; }
+
+            [JsonProperty("success")]
+            public bool Success { get; set; }
+        }
+
+        public class ServerInfo
+        {
+            [JsonProperty("server")]
+            public string Server { get; set; }
+
+            [JsonProperty("datetime")]
+            public string Datetime { get; set; }
+
+            [JsonProperty("remarks")]
+            public string Remarks { get; set; }
         }
     }
 }

@@ -36,8 +36,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Retrieves Member PIN based on personal information
         /// </summary>
         [HttpPost("member-pin")]
-        //[ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        //[ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> GetMemberPIN([FromBody] MemberPinViewModelRest request)
         {
             var result = await _eClaimsService.GetRestMemberPINAsync(request);
@@ -48,8 +46,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Searches for case rates based on criteria
         /// </summary>
         [HttpPost("case-rates")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> SearchCaseRates([FromBody] CaseRateRestRequest request)
         {
             var result = await _eClaimsService.SearchRestCaseRateAsync(request);

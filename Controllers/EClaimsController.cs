@@ -56,8 +56,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Retrieves server date and time
         /// </summary>
         [HttpPost("server-datetime")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> GetServerDateTime([FromBody] TokenCredentialsRequest request)
         {
             var result = await _eClaimsService.SearchServerDateTime(request);
@@ -68,8 +66,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Retrieves database date and time
         /// </summary>
         [HttpPost("database-datetime")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> GetDatabaseDateTime([FromBody] TokenCredentialsRequest request)
         {
             var result = await _eClaimsService.SearchDatabaseDateTime(request);
@@ -80,8 +76,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Retrieves Doctor's Professional Association Number (PAN)
         /// </summary>
         [HttpPost("doctor-pan")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> GetDoctorPAN([FromBody] DoctorPANRestRequest request)
         {
             var result = await _eClaimsService.GetRestDoctorPANAsync(request);
@@ -92,8 +86,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Checks if doctor is accredited for given dates
         /// </summary>
         [HttpPost("doctor-accreditation")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> CheckDoctorAccreditation([FromBody] DoctorAccreditationRestViewModel request)
         {
             var result = await _eClaimsService.CheckDoctorIfAccredited(request);

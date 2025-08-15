@@ -1,5 +1,6 @@
 ﻿using Azure;
 using EasyClaimsCore.API.Extensions;
+using EasyClaimsCore.API.Models.DTOs;
 using EasyClaimsCore.API.Models.Exceptions;
 using EasyClaimsCore.API.Models.Requests;
 using EasyClaimsCore.API.Models.Responses;
@@ -10,9 +11,11 @@ using System.Diagnostics;
 using System.Security.Policy;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Xml;
+using Formatting = Newtonsoft.Json.Formatting;
 using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
 namespace EasyClaimsCore.API.Services
@@ -300,17 +303,66 @@ namespace EasyClaimsCore.API.Services
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/searchCaseRates";
             var response = await MakePostRequestAsync(endpoint, payload);
 
-
             if (response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
+
+                // Step 1: Decrypt
                 var jsonData = _cryptoEngine.DecryptRestPayloadData(responseContent, _cipherKey);
-                XmlDocument xmlDoc = JsonConvert.DeserializeXmlNode(jsonData, "eCASERATES");
+
+                // Step 2: First deserialize to a dynamic object to remove escaping
+                var unescapedObject = JsonConvert.DeserializeObject(jsonData);
+
+                // Step 3: Convert the cleaned object back to JSON string
+                var cleanedJson = JsonConvert.SerializeObject(unescapedObject);
+
+                // Step 4: Deserialize into DTO (now the string is valid JSON)
+                var dto = JsonConvert.DeserializeObject<ECaseRatesDto>(cleanedJson);
+
+                var model = new ECaseRatesDto
+                {
+                    CaseRates = new List<CaseRateDto>()
+                };
+
+                foreach (var cr in dto.CaseRates)
+                {
+                    var caseRate = new CaseRateDto
+                    {
+                        CaseRateCode = cr.CaseRateCode,
+                        CaseRateDescription = cr.CaseRateDescription,
+                        ItemCode = cr.ItemCode,
+                        ItemDescription = cr.ItemDescription,
+                        EffectivityDate = cr.EffectivityDate,
+                        Amounts = new List<AmountDto>()
+                    };
+
+                    foreach (var amt in cr.Amounts)
+                    {
+                        caseRate.Amounts.Add(new AmountDto
+                        {
+                            PrimaryHCIFee = amt.PrimaryHCIFee,
+                            PrimaryProfFee = amt.PrimaryProfFee,
+                            PrimaryCaseRate = amt.PrimaryCaseRate,
+                            SecondaryHCIFee = amt.SecondaryHCIFee,
+                            SecondaryProfFee = amt.SecondaryProfFee,
+                            SecondaryCaseRate = amt.SecondaryCaseRate,
+                            CheckFacilityH1 = amt.CheckFacilityH1,
+                            CheckFacilityH2 = amt.CheckFacilityH2,
+                            CheckFacilityH3 = amt.CheckFacilityH3,
+                            CheckFacilityASC = amt.CheckFacilityASC,
+                            CheckFacilityPCF = amt.CheckFacilityPCF,
+                            CheckFacilityMAT = amt.CheckFacilityMAT,
+                            CheckFacilityFSDC = amt.CheckFacilityFSDC
+                        });
+                    }
+
+                    model.CaseRates.Add(caseRate);
+                }
 
                 return new
                 {
                     Message = "Data has been successfully retrieved",
-                    Result = xmlDoc?.InnerXml,
+                    Result = model,
                     Success = true
                 };
             }
@@ -454,11 +506,9 @@ namespace EasyClaimsCore.API.Services
             };
 
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-
             var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
             httpClient.DefaultRequestHeaders.Clear();
             httpClient.DefaultRequestHeaders.Add("token", token);
-
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/isDoctorAccredited";
             var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
             {
@@ -474,37 +524,36 @@ namespace EasyClaimsCore.API.Services
             {
                 var tokenResponseJson = await response.Content.ReadAsStringAsync();
                 var jsonData = _cryptoEngine.DecryptRestPayloadData(tokenResponseJson, _cipherKey);
-                var xmlDoc = JsonConvert.DeserializeXmlNode(jsonData, "eACCREDITATION");
-
+                var model = JsonConvert.DeserializeObject<EAccreditationDto>(jsonData);
                 return new
                 {
-                    Message = "",
-                    Result = xmlDoc?.OuterXml,
+                    Message = "Data has been successfully retrieved",
+                    Result = model,
                     Success = true
                 };
             }
-
             throw new ExternalApiException($"Doctor accreditation check failed with status: {response.StatusCode}");
         }
 
         private async Task<object> ExecuteServerVersionAsync(TokenCredentialsRequest request)
         {
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-
             var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
             httpClient.DefaultRequestHeaders.Clear();
             httpClient.DefaultRequestHeaders.Add("token", token);
-
             var url = $"{_restBaseUrl}PHIC/Claims3.0/getServerVersion";
             var response = await httpClient.GetAsync(url);
 
             if (response.IsSuccessStatusCode)
             {
-                var tokenResponseJson = await response.Content.ReadAsStringAsync();
-                var jsonObject = JsonConvert.DeserializeObject<dynamic>(tokenResponseJson);
-                string formattedJson = JsonConvert.SerializeObject(jsonObject, Newtonsoft.Json.Formatting.Indented);
-
-                return new { Result = formattedJson };
+                var jsonData = await response.Content.ReadAsStringAsync();
+                var model = JsonConvert.DeserializeObject<TokenResponse>(jsonData);
+                return new
+                {
+                    Message = "Data has been successfully retrieved",
+                    Result = model,
+                    Success = true
+                };
             }
 
             throw new ExternalApiException($"Server version request failed with status: {response.StatusCode}");

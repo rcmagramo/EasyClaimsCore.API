@@ -96,8 +96,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Retrieves PhilHealth server version
         /// </summary>
         [HttpPost("server-version")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> GetServerVersion([FromBody] TokenCredentialsRequest request)
         {
             var result = await _eClaimsService.FetchServerVersion(request);
@@ -108,8 +106,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Searches for employer information
         /// </summary>
         [HttpPost("employers")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> SearchEmployer([FromBody] EmployerRequestViewModel request)
         {
             var result = await _eClaimsService.FindEmployer(request);
@@ -120,8 +116,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Retrieves uploaded claims map by receipt ticket number
         /// </summary>
         [HttpPost("uploaded-claims-map")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> GetUploadedClaimsMap([FromBody] UploadedClaimsMapRestRequest request)
         {
             var result = await _eClaimsService.FetchUploadedClaimsMap(request);
@@ -132,8 +126,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Retrieves claim status by series LHIO numbers
         /// </summary>
         [HttpPost("claim-status")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> GetClaimStatus([FromBody] ClaimStatusApiRequest request)
         {
             var result = await _eClaimsService.FetchClaimStatus(request);
@@ -144,8 +136,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Checks eligibility for claim
         /// </summary>
         [HttpPost("eligibility")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> CheckEligibility([FromBody] EligibilityRequestViewModel request)
         {
             var result = await _eClaimsService.IsClaimEligibleAPI(request);
@@ -156,8 +146,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Retrieves voucher details by voucher number
         /// </summary>
         [HttpPost("voucher-details")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> GetVoucherDetails([FromBody] VoucherRestRequest request)
         {
             var result = await _eClaimsService.FetchVoucherDetails(request);
@@ -168,8 +156,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Validates eClaims file format and content
         /// </summary>
         [HttpPost("validate-eclaims")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> ValidateEClaims([FromBody] CommonAPIRequest request)
         {
             var result = await _eClaimsService.EClaimsFileCheckAPI(request);
@@ -180,8 +166,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Validates eSOA (electronic Statement of Account)
         /// </summary>
         [HttpPost("validate-esoa")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> ValidateESOA([FromBody] CommonAPIRequest request)
         {
             var result = await _eClaimsService.IsESOAValid(request);
@@ -192,8 +176,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Adds required documents to a claim
         /// </summary>
         [HttpPost("required-documents")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> AddRequiredDocument([FromBody] RequiredApiDocumentRequest request)
         {
             var result = await _eClaimsService.AddRequiredApiDocument(request);
@@ -204,8 +186,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Generates PBEF (PhilHealth Benefit Eligibility Form) PDF
         /// </summary>
         [HttpPost("generate-pbef")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> GeneratePBEF([FromBody] PBEFRequest request)
         {
             var result = await _eClaimsService.GeneratePBEFPDF(request);
@@ -216,8 +196,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Uploads eClaims data to PhilHealth
         /// </summary>
         [HttpPost("upload-eclaims")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> UploadEClaims([FromBody] CommonAPIRequest request)
         {
             var result = await _eClaimsService.EClaimsApiUpload(request);
@@ -228,8 +206,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Validates DRG (Diagnosis Related Group) data
         /// </summary>
         [HttpPost("validate-drg")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> ValidateDRG([FromBody] DRGRequest request)
         {
             var result = await _eClaimsService.IsDRGValidAPI(request);
@@ -240,8 +216,6 @@ namespace EasyClaimsCore.API.Controllers
         /// Mock response for testing purposes
         /// </summary>
         [HttpPost("mock-response")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         public async Task<ActionResult<ApiResponse<object>>> MockResponse([FromBody] MockRequest request)
         {
             var result = await _eClaimsService.MockResponseAPI(request);

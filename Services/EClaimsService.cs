@@ -584,15 +584,27 @@ namespace EasyClaimsCore.API.Services
             if (response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
-                var jsonData = _cryptoEngine.DecryptRestPayloadData(responseContent, _cipherKey);
-                var xmlDoc = JsonConvert.DeserializeXmlNode(jsonData, "eEMPLOYERS");
 
+                // Step 1: Decrypt
+                var jsonData = _cryptoEngine.DecryptRestPayloadData(responseContent, _cipherKey);
+
+                // Step 2: Remove escaping
+                var unescapedObject = JsonConvert.DeserializeObject(jsonData);
+
+                // Step 3: Serialize to clean JSON
+                var cleanedJson = JsonConvert.SerializeObject(unescapedObject);
+
+                // Step 4: Deserialize into DTO
+                var dto = JsonConvert.DeserializeObject<EmployersDto>(cleanedJson);
+
+                // Step 5: Return JSON in CaseRate style
                 return new
                 {
                     Message = "",
-                    Result = xmlDoc?.InnerXml,
+                    Result = dto,
                     Success = true
                 };
+
             }
 
             throw new ExternalApiException($"Employer search failed with status: {response.StatusCode}");

@@ -128,9 +128,9 @@ namespace EasyClaimsCore.API.Services
                     break;
 
                 case EligibilityRequestViewModel eligibilityRequest:
-                    if (string.IsNullOrWhiteSpace(eligibilityRequest.MemberPIN))
+                    if (string.IsNullOrWhiteSpace(eligibilityRequest.memberPIN))
                         throw new ValidationException("Member PIN is required for eligibility check");
-                    if (string.IsNullOrWhiteSpace(eligibilityRequest.AdmissionDate))
+                    if (string.IsNullOrWhiteSpace(eligibilityRequest.admissionDate))
                         throw new ValidationException("Admission date is required for eligibility check");
                     break;
 

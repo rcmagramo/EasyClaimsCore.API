@@ -667,50 +667,72 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteEligibilityCheckAsync(EligibilityRequestViewModel request)
         {
-            var eligibility = new EligibilityRequestVM
+            var _eligibility = new EligibilityRequestVM
             {
-                hospitalCode = request.HospitalCode ?? "",
-                isForOPDHemodialysisClaim = request.IsForOPDHemodialysisClaim ?? "",
-                memberPIN = request.MemberPIN ?? "",
-                memberBasicInformation = request.MemberBasicInformation,
-                patientIs = request.PatientIs ?? "",
-                admissionDate = request.AdmissionDate ?? "",
-                patientPIN = request.PatientPIN ?? "",
-                patientBasicInformation = request.PatientBasicInformation,
-                membershipType = request.MembershipType,
-                pEN = request.PEN ?? "",
-                employerName = request.EmployerName ?? "",
-                isFinal = request.IsFinal ?? ""
+                hospitalCode = request.hospitalCode ?? "",
+                isForOPDHemodialysisClaim = request.isForOPDHemodialysisClaim ?? "",
+                memberPIN = request.memberPIN ?? "",
+                memberBasicInformation = request.memberBasicInformation,
+                patientIs = request.patientIs ?? "",
+                admissionDate = request.admissionDate ?? "",
+                patientPIN = request.patientPIN ?? "",
+                patientBasicInformation = request.patientBasicInformation,
+                membershipType = request.membershipType,
+                pEN = request.pEN ?? "",
+                employerName = request.employerName ?? "",
+                isFinal = request.isFinal ?? ""
             };
 
-            var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(
-                JsonConvert.SerializeObject(eligibility), _cipherKey);
 
-            var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
-            httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("token", token);
+            var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            //var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(JsonConvert.SerializeObject(eligibility), _cipherKey);
+            string jsonPayloadDataCE = JsonConvert.SerializeObject(_eligibility);
+            var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(jsonPayloadDataCE, _cipherKey);
 
+            ClearHeaders();
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/isClaimEligible";
-            var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
-            {
-                Content = new StringContent(encryptedPayload, Encoding.UTF8, "application/json")
-            };
+            var requestMessage = CreatePostRequestAsync(endpoint, newtoken, encryptedPayload);
+            var response = await MakeSendRequestAsync(requestMessage);
 
-            var response = await httpClient.SendAsync(requestMessage);
+            //var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            //var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(
+            //    JsonConvert.SerializeObject(eligibility), _cipherKey);
+
+            //var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
+            //httpClient.DefaultRequestHeaders.Clear();
+            //httpClient.DefaultRequestHeaders.Add("token", token);
+
+            //var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/isClaimEligible";
+            //var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
+            //{
+            //    Content = new StringContent(encryptedPayload, Encoding.UTF8, "application/json")
+            //};
+
+            //var response = await httpClient.SendAsync(requestMessage);
 
             if (response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
                 var jsonData = _cryptoEngine.DecryptRestPayloadData(responseContent, _cipherKey);
-                var xmlDoc = JsonConvert.DeserializeXmlNode(jsonData, "newRESPONSE");
+
+                var unescapedObject = JsonConvert.DeserializeObject(jsonData);
+                var cleanedJson = JsonConvert.SerializeObject(unescapedObject);
+                var dto = JsonConvert.DeserializeObject<IsClaimEligibleDto>(cleanedJson);
 
                 return new
                 {
                     Message = "",
-                    Result = xmlDoc?.InnerXml,
+                    Result = dto,
                     Success = true
                 };
+
+                //var xmlDoc = JsonConvert.DeserializeXmlNode(jsonData, "newRESPONSE");
+                //return new
+                //{
+                //    Message = "",
+                //    Result = xmlDoc?.InnerXml,
+                //    Success = true
+                //};
             }
 
             throw new ExternalApiException($"Eligibility check failed with status: {response.StatusCode}");
@@ -1205,20 +1227,20 @@ namespace EasyClaimsCore.API.Services
         {
             NewHttpClientFactory.Instance.DefaultRequestHeaders.Clear();
         }
-        //Helper classes
+
+
+        //Helper models
         private class InputStructure
         {
             public string pSeriesLhioNo { get; set; } = string.Empty;
             public string pXML { get; set; } = string.Empty;
         }
-
         private class DRGApiResponse
         {
             public string Message { get; set; } = string.Empty;
             public object? Result { get; set; }
             public bool Success { get; set; }
         }
-
         public class Outer
         {
             [JsonProperty("message")]
@@ -1230,7 +1252,6 @@ namespace EasyClaimsCore.API.Services
             [JsonProperty("success")]
             public bool Success { get; set; }
         }
-
         private class OuterRaw
         {
             [JsonProperty("message")]
@@ -1242,7 +1263,6 @@ namespace EasyClaimsCore.API.Services
             [JsonProperty("success")]
             public bool Success { get; set; }
         }
-
         public class ServerInfo
         {
             [JsonProperty("server")]

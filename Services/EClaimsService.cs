@@ -691,9 +691,7 @@ namespace EasyClaimsCore.API.Services
                 isFinal = request.isFinal ?? ""
             };
 
-
             var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            //var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(JsonConvert.SerializeObject(eligibility), _cipherKey);
             string jsonPayloadDataCE = JsonConvert.SerializeObject(_eligibility);
             var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(jsonPayloadDataCE, _cipherKey);
 
@@ -702,27 +700,10 @@ namespace EasyClaimsCore.API.Services
             var requestMessage = CreatePostRequestAsync(endpoint, newtoken, encryptedPayload);
             var response = await MakeSendRequestAsync(requestMessage);
 
-            //var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            //var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(
-            //    JsonConvert.SerializeObject(eligibility), _cipherKey);
-
-            //var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
-            //httpClient.DefaultRequestHeaders.Clear();
-            //httpClient.DefaultRequestHeaders.Add("token", token);
-
-            //var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/isClaimEligible";
-            //var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
-            //{
-            //    Content = new StringContent(encryptedPayload, Encoding.UTF8, "application/json")
-            //};
-
-            //var response = await httpClient.SendAsync(requestMessage);
-
             if (response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
                 var jsonData = _cryptoEngine.DecryptRestPayloadData(responseContent, _cipherKey);
-
                 var unescapedObject = JsonConvert.DeserializeObject(jsonData);
                 var cleanedJson = JsonConvert.SerializeObject(unescapedObject);
                 var dto = JsonConvert.DeserializeObject<IsClaimEligibleDto>(cleanedJson);
@@ -733,14 +714,6 @@ namespace EasyClaimsCore.API.Services
                     Result = dto,
                     Success = true
                 };
-
-                //var xmlDoc = JsonConvert.DeserializeXmlNode(jsonData, "newRESPONSE");
-                //return new
-                //{
-                //    Message = "",
-                //    Result = xmlDoc?.InnerXml,
-                //    Success = true
-                //};
             }
 
             throw new ExternalApiException($"Eligibility check failed with status: {response.StatusCode}");

@@ -6,12 +6,12 @@ namespace EasyClaimsCore.API.Models.DTOs
     public class IsClaimEligibleDto
     {
         [JsonProperty("isok")]
-        public string IsOk;
+        public string IsOk { get; set; }
         [JsonProperty("trackingno")]
-        public string TrackingNo;
+        public string TrackingNo { get; set; }
         [JsonProperty("referenceno")]
-        public string ReferenceNo;
+        public string ReferenceNo { get; set; }
         [JsonProperty("asof")]
-        public string AsOf;
+        public string AsOf { get; set; }
     }
 }

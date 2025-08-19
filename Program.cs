@@ -1,18 +1,22 @@
 using EasyClaimsCore.API.Data;
 using EasyClaimsCore.API.Extensions;
+using EasyClaimsCore.API.HealthChecks;
 using EasyClaimsCore.API.Middleware;
 using EasyClaimsCore.API.Security.Cryptography;
 using EasyClaimsCore.API.Serialization;
 using EasyClaimsCore.API.Services;
 using EasyClaimsCore.API.Services.Logging;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Polly;
 using Polly.Extensions.Http;
 using Serilog;
 using System.Net;
+using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -159,6 +163,25 @@ builder.Services.AddHealthChecks()
         name: "philhealth-api",
         timeout: TimeSpan.FromSeconds(30));
 
+// Analytics Services
+builder.Services.AddScoped<EasyClaimsCore.API.Services.Analytics.IAnalyticsService, EasyClaimsCore.API.Services.Analytics.AnalyticsService>();
+builder.Services.AddScoped<EasyClaimsCore.API.Services.Analytics.IAnalyticsCacheService, EasyClaimsCore.API.Services.Analytics.AnalyticsCacheService>();
+builder.Services.AddScoped<EasyClaimsCore.API.Services.Background.IAlertService, EasyClaimsCore.API.Services.Background.AlertService>();
+
+// Caching
+builder.Services.AddMemoryCache();
+
+// Background Services
+builder.Services.AddHostedService<EasyClaimsCore.API.Services.Background.AnalyticsBackgroundService>();
+
+// Health Checks
+builder.Services.AddAnalyticsHealthChecks();
+
+// For cached analytics (optional - provides better performance)
+//builder.Services.Decorate<EasyClaimsCore.API.Services.Analytics.IAnalyticsService, EasyClaimsCore.API.Services.Analytics.CachedAnalyticsService>();
+
+
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -172,6 +195,35 @@ var app = builder.Build();
         c.DocumentTitle = "EasyClaims API Documentation";
     });
 //}
+
+// Health Checks endpoint
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(x => new
+            {
+                name = x.Key,
+                status = x.Value.Status.ToString(),
+                exception = x.Value.Exception?.Message,
+                duration = x.Value.Duration.ToString(),
+                data = x.Value.Data
+            }),
+            duration = report.TotalDuration
+        };
+        await context.Response.WriteAsync(JsonSerializer.Serialize(response));
+    }
+});
+
+// Dashboard routes
+app.MapGet("/", () => Results.Redirect("/api/analytics/dashboard"));
+app.MapGet("/dashboard", () => Results.Redirect("/api/analytics/dashboard"));
+
+
 
 // Custom Middleware
 app.UseMiddleware<ErrorHandlingMiddleware>();

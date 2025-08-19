@@ -24,5 +24,6 @@ namespace EasyClaimsCore.API.Services
         Task<object> EClaimsApiUpload(CommonAPIRequest request);
         Task<object> IsDRGValidAPI(DRGRequest request);
         Task<object> MockResponseAPI(MockRequest request);
+        Task<object> MockDecryptResponseAPI(MockDecryptedRequest request);
     }
 }

@@ -212,6 +212,14 @@ namespace EasyClaimsCore.API.Services
                 async (req) => await ExecuteMockResponseAsync(req));
         }
 
+        public async Task<object> MockDecryptResponseAPI(MockDecryptedRequest request)
+        {
+            return await _serviceExecutor.ExecuteServiceAsync(
+                RequestName.MockDecryptResponseAPI,
+                request,
+                async (req) => await ExecuteMockDecryptResponseAsync(req));
+        }
+
         // Implementation methods following the ExecuteRestRequest pattern
 
         private async Task<object> ExecuteTokenRequestAsync(TokenRequest request)
@@ -1116,6 +1124,31 @@ namespace EasyClaimsCore.API.Services
             };
         }
 
+        private async Task<object> ExecuteMockDecryptResponseAsync(MockDecryptedRequest request)
+        {
+            var Newrequest = new
+            {
+                result = new MockDecryptRequest
+                {
+                    docMimeType = request.docMimeType,
+                    hash = request.hash,
+                    key1 = request.key1,
+                    key2 = request.key2,
+                    iv = request.iv,
+                    doc = request.doc
+                }
+            };
+            string encryptedContent = JsonConvert.SerializeObject(Newrequest);
+            var jsonData = _cryptoEngine.DecryptRestPayloadData(encryptedContent, _cipherKey);
+            // Generate mock response based on request type
+            return new
+            {
+                Message = "Decrypted mock response generated successfully",
+                Result = jsonData,
+                Success = true
+            };
+        }
+
         // Helper methods
         private int GetClaimsCount(string xml)
         {
@@ -1227,6 +1260,8 @@ namespace EasyClaimsCore.API.Services
         {
             NewHttpClientFactory.Instance.DefaultRequestHeaders.Clear();
         }
+
+
 
 
         //Helper models

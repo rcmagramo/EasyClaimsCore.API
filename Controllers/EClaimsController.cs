@@ -1,8 +1,12 @@
-﻿using EasyClaimsCore.API.Models.Requests;
+﻿using Azure.Core;
+using EasyClaimsCore.API.Models.Requests;
 using EasyClaimsCore.API.Models.Responses;
+using EasyClaimsCore.API.Security.Cryptography.DataContracts;
 using EasyClaimsCore.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace EasyClaimsCore.API.Controllers
 {
@@ -219,6 +223,13 @@ namespace EasyClaimsCore.API.Controllers
         public async Task<ActionResult<ApiResponse<object>>> MockResponse([FromBody] MockRequest request)
         {
             var result = await _eClaimsService.MockResponseAPI(request);
+            return HandleServiceResult(result);
+        }
+
+        [HttpPost("mock-decypted-response")]
+        public async Task<ActionResult<ApiResponse<object>>> MockDecryptResponse([FromBody] MockDecryptedRequest payload)
+        {
+            var result = await _eClaimsService.MockDecryptResponseAPI(payload);
             return HandleServiceResult(result);
         }
 

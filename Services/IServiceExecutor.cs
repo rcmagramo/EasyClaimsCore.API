@@ -10,5 +10,6 @@ namespace EasyClaimsCore.API.Services
             TRequest request,
             Func<TRequest, Task<object>> serviceImplementation,
             int chargeableItems = 0) where TRequest : IBaseRequest;
+        
     }
 }

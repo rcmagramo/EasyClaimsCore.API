@@ -21,6 +21,7 @@
         generatePBEFPDF = 17,
         eClaimsApiUpload = 18,
         FetchVoucherDetails = 19,
-        isDRGValidAPI = 20
+        isDRGValidAPI = 20,
+        MockDecryptResponseAPI = 21
     }
 }

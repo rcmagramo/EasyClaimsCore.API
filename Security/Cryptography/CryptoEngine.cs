@@ -233,29 +233,6 @@ namespace EasyClaimsCore.API.Security.Cryptography
             {
                 throw new ApplicationException($"Cryptography exception occurred! {ex.Message}");
             }
-            //try
-            //{
-            //    if (string.IsNullOrEmpty(encryptedContent))
-            //        throw new ArgumentException("Encrypted content cannot be null or empty string!");
-
-            //    var payload = JsonConvert.DeserializeObject<dynamic>(encryptedContent);
-            //    if (payload == null)
-            //        throw new ArgumentException("Invalid payload format");
-
-            //    var doc = payload.result.doc.ToString();
-            //    var iv = payload.result.iv.ToString();
-
-            //    var decodedDoc = Convert.FromBase64String(doc);
-            //    var ivBytes = Convert.FromBase64String(iv);
-            //    var password = GeneratePassword(cipherKey);
-
-            //    return DecryptUsingAES(decodedDoc, password, ivBytes);
-            //}
-            //catch (Exception ex)
-            //{
-            //    _logger.LogError(ex, "Cryptography exception occurred during REST payload decryption");
-            //    throw new ApplicationException($"Cryptography exception occurred! {ex.Message}");
-            //}
         }
 
         private byte[] GeneratePassword(string cipherKey)

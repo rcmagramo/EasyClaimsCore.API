@@ -162,8 +162,8 @@ builder.Services.AddHealthChecks()
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
-{
+//if (app.Environment.IsDevelopment())
+//{
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
@@ -171,7 +171,7 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = "api-docs";
         c.DocumentTitle = "EasyClaims API Documentation";
     });
-}
+//}
 
 // Custom Middleware
 app.UseMiddleware<ErrorHandlingMiddleware>();

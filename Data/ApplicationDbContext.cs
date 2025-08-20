@@ -37,9 +37,11 @@ namespace EasyClaimsCore.API.Data
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.MethodName).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.HospitalId).IsRequired();
+                entity.Property(e => e.CipherKey).IsRequired().HasMaxLength(255); // Configure CipherKey
                 entity.Property(e => e.IsActive).HasDefaultValue(true);
 
                 entity.HasIndex(e => new { e.HospitalId, e.MethodName }).IsUnique();
+                entity.HasIndex(e => e.HospitalId); // Add index for CipherKey lookups
             });
 
             // Seed data for APIRequests
@@ -48,17 +50,39 @@ namespace EasyClaimsCore.API.Data
 
         private static void SeedAPIRequests(ModelBuilder modelBuilder)
         {
-            var apiRequests = Enum.GetValues<RequestName>()
-                .Select((requestName, index) => new APIRequest
-                {
-                    Id = (int)requestName,
-                    HospitalId = "H92006568", // Default hospital
-                    MethodName = requestName.ToString(),
-                    IsActive = true
-                })
-                .ToArray();
+            // Sample cipher keys for different hospitals
+            var hospitalCipherKeys = new Dictionary<string, string>
+            {
+                { "H92006568", "PHilheaLthDuMmy311630" }, // Default hospital - staging key
+                { "H12345678", "YourActualCipherKey123" }, // Another hospital
+                { "H87654321", "AnotherHospitalKey456" },  // Another hospital
+                // Add more hospitals as needed
+            };
 
-            modelBuilder.Entity<APIRequest>().HasData(apiRequests);
+            var apiRequests = new List<APIRequest>();
+            int currentId = 1;
+
+            // Create API requests for each hospital
+            foreach (var hospitalKvp in hospitalCipherKeys)
+            {
+                var hospitalId = hospitalKvp.Key;
+                var hospitalCipherKey = hospitalKvp.Value;
+
+                var hospitalRequests = Enum.GetValues<RequestName>()
+                    .Select(requestName => new APIRequest
+                    {
+                        Id = currentId++, // Sequential unique ID
+                        HospitalId = hospitalId,
+                        MethodName = requestName.ToString(),
+                        CipherKey = hospitalCipherKey,
+                        IsActive = true
+                    })
+                    .ToArray();
+
+                apiRequests.AddRange(hospitalRequests);
+            }
+
+            modelBuilder.Entity<APIRequest>().HasData(apiRequests.ToArray());
         }
     }
 }

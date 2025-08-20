@@ -157,6 +157,13 @@ namespace EasyClaimsCore.API.Migrations
                 keyValue: 20,
                 column: "HospitalId",
                 value: "H92006568");
+           
+            migrationBuilder.UpdateData(
+               table: "APIRequests",
+               keyColumn: "Id",
+               keyValue: 21,
+               column: "HospitalId",
+               value: "H92006568");
         }
 
         /// <inheritdoc />
@@ -307,6 +314,13 @@ namespace EasyClaimsCore.API.Migrations
                 table: "APIRequests",
                 keyColumn: "Id",
                 keyValue: 20,
+                column: "HospitalId",
+                value: 1);
+
+            migrationBuilder.UpdateData(
+                table: "APIRequests",
+                keyColumn: "Id",
+                keyValue: 21,
                 column: "HospitalId",
                 value: 1);
         }

@@ -81,7 +81,8 @@ namespace EasyClaimsCore.API.Migrations
                     { 17, 1, true, "generatePBEFPDF" },
                     { 18, 1, true, "eClaimsApiUpload" },
                     { 19, 1, true, "FetchVoucherDetails" },
-                    { 20, 1, true, "isDRGValidAPI" }
+                    { 20, 1, true, "isDRGValidAPI" },
+                    { 21, 1, true, "MockDecryptResponseAPI" }
                 });
 
             migrationBuilder.CreateIndex(

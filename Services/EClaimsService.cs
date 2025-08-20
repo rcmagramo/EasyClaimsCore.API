@@ -7,6 +7,7 @@ using EasyClaimsCore.API.Models.Responses;
 using EasyClaimsCore.API.Security.Cryptography;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
 using System.Diagnostics;
 using System.Security.Policy;
 using System.Text;
@@ -26,7 +27,7 @@ namespace EasyClaimsCore.API.Services
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ICryptoEngine _cryptoEngine;
         private readonly ITokenHandler _tokenHandler;
-        private readonly ICipherKeyService _cipherKeyService; // New service
+        private readonly ICipherKeyService _cipherKeyService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<EClaimsService> _logger;
         private readonly string _restBaseUrl;
@@ -37,7 +38,7 @@ namespace EasyClaimsCore.API.Services
             IHttpClientFactory httpClientFactory,
             ICryptoEngine cryptoEngine,
             ITokenHandler tokenHandler,
-            ICipherKeyService cipherKeyService, // Inject new service
+            ICipherKeyService cipherKeyService, 
             IConfiguration configuration,
             ILogger<EClaimsService> logger)
         {
@@ -641,30 +642,32 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteUploadedClaimsMapAsync(UploadedClaimsMapRestRequest request)
         {
-            var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var cipherKey = await GetCipherKeyAsync(request.pmcc);
-
-            var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
-            httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("token", token);
+          
+            ClearHeaders();
+            AddHeaders(new Dictionary<string, string> { { "token", newtoken } });
 
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/getUploadedClaimsMap?receiptTicketNumber={request.receiptTicketNumber}";
-            var response = await httpClient.GetAsync(endpoint);
+
+            var response = await MakeGetRequestAsync(endpoint);
 
             if (response.IsSuccessStatusCode)
             {
-                var tokenResponseJson = await response.Content.ReadAsStringAsync();
-                var jsonData = _cryptoEngine.DecryptRestPayloadData(tokenResponseJson, cipherKey);
-                var xmlDoc = JsonConvert.DeserializeXmlNode(jsonData, "eCONFIRMATION");
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var jsonData = _cryptoEngine.DecryptRestPayloadData(responseContent, cipherKey);
+                var unescapedObject = JsonConvert.DeserializeObject(jsonData);
+                var cleanedJson = JsonConvert.SerializeObject(unescapedObject);
+                var dto = JsonConvert.DeserializeObject<EConfirmationDto>(cleanedJson);
 
                 return new
                 {
                     Message = "",
-                    Result = xmlDoc?.OuterXml,
+                    Result = dto,
                     Success = true
                 };
-            }
 
+            }
             throw new ExternalApiException($"Uploaded claims map request failed with status: {response.StatusCode}");
         }
 

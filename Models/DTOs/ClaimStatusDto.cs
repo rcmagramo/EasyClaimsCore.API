@@ -13,7 +13,7 @@ namespace EasyClaimsCore.API.Models.DTOs
         public string AsOfTime { get; set; }
 
         [JsonProperty("CLAIM")]
-        public Claim Claim { get; set; } // Single Claim, not List
+        public Claim Claim { get; set; } 
     }
 
     public sealed class Claim
@@ -84,7 +84,7 @@ namespace EasyClaimsCore.API.Models.DTOs
 
     public sealed class Payment
     {
-        [XmlIgnore]
+        [JsonIgnore]
         private decimal totalClaimAmountPaid;
 
         [JsonProperty("pTotalClaimAmountPaid")]

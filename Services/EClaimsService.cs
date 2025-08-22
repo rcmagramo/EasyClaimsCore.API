@@ -766,36 +766,39 @@ namespace EasyClaimsCore.API.Services
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var cipherKey = await GetCipherKeyAsync(request.pmcc);
 
-            var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
-            httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("token", token);
+            ClearHeaders();
+            AddHeaders(new Dictionary<string, string> { { "token", token } });
 
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/getVoucherDetails?voucherno={request.VoucherNo}";
-            var response = await httpClient.GetAsync(endpoint);
+            var response = await MakeGetRequestAsync(endpoint);
 
+           
             if (response.IsSuccessStatusCode)
             {
-                var tokenResponseJson = await response.Content.ReadAsStringAsync();
-                var jsonData = _cryptoEngine.DecryptRestPayloadData(tokenResponseJson, cipherKey);
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var xmlData = _cryptoEngine.DecryptRestPayloadData(responseContent, cipherKey);
 
-                if (jsonData.Contains("PhilhealthException"))
+                // 1. Load XML
+                XmlDocument doc = new XmlDocument();
+                doc.LoadXml(xmlData);
+
+                // 2. Convert XML -> JSON
+                string rawJson = JsonConvert.SerializeXmlNode(doc);
+
+                // 3. Remove @ prefixes from attributes
+                string cleanJson = Regex.Replace(rawJson, "\"@([^\"]+)\":", "\"$1\":");
+
+                // 4. Deserialize into DTO
+                var rootWrapper = JsonConvert.DeserializeObject<Dictionary<string, VoucherDetailsDto>>(cleanJson);
+
+                var claimStatus = rootWrapper["VOUCHER"];
+
+                return new
                 {
-                    return new
-                    {
-                        Message = jsonData.Trim(),
-                        Result = jsonData.Trim(),
-                        Success = true
-                    };
-                }
-                else
-                {
-                    return new
-                    {
-                        Message = "",
-                        Result = jsonData,
-                        Success = true
-                    };
-                }
+                    Message = "",
+                    Result = claimStatus,
+                    Success = true
+                };
             }
 
             throw new ExternalApiException($"Voucher details request failed with status: {response.StatusCode}");

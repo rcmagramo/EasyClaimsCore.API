@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Diagnostics;
+using System.Security.AccessControl;
 using System.Security.Policy;
 using System.Text;
 using System.Text.Json;
@@ -1166,14 +1167,26 @@ namespace EasyClaimsCore.API.Services
                 }
             };
             string encryptedContent = JsonConvert.SerializeObject(Newrequest);
-            var jsonData = _cryptoEngine.DecryptRestPayloadData(encryptedContent, cipherKey);
-            // Generate mock response based on request type
+            var decryptedData = _cryptoEngine.DecryptRestPayloadData(encryptedContent, cipherKey);
+            
+            // Load XML
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml(decryptedData);
+
+            //// Convert XML → JSON
+            //string jsonText = JsonConvert.SerializeXmlNode(doc);
+
+            string cleanData = Regex.Replace(doc.InnerXml, "\"@([^\"]+)\":", "\"$1\":");
+            string cleanedXml = cleanData.Replace("\\", "");
+            
             return new
             {
                 Message = "Decrypted mock response generated successfully",
-                Result = jsonData,
+                Result = cleanedXml,
                 Success = true
             };
+
+
         }
 
         // Helper methods

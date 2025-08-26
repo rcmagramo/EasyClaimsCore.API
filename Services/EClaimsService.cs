@@ -1178,7 +1178,8 @@ namespace EasyClaimsCore.API.Services
 
             string cleanData = Regex.Replace(doc.InnerXml, "\"@([^\"]+)\":", "\"$1\":");
             string cleanedXml = cleanData.Replace("\\", "");
-            
+            cleanedXml = cleanedXml.Trim();
+          
             return new
             {
                 Message = "Decrypted mock response generated successfully",

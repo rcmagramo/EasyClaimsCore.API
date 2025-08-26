@@ -201,39 +201,108 @@ namespace EasyClaimsCore.API.Security.Cryptography
             }
         }
 
+
         public string DecryptRestPayloadData(string encryptedContent, string cipherKey)
         {
             try
             {
-                if (string.IsNullOrEmpty(encryptedContent)) throw new Exception("XML payload cannot be null or empty string!");
+                if (string.IsNullOrEmpty(encryptedContent))
+                    throw new ArgumentException("Encrypted payload cannot be null or empty string!");
 
-                var xmlPayloadData = "";
-
-                var payload = JsonConvert.DeserializeObject<dynamic>(encryptedContent);
+                // Deserialize payload
+                dynamic payload;
+                try
+                {
+                    payload = JsonConvert.DeserializeObject<dynamic>(encryptedContent);
+                }
+                catch (JsonException jex)
+                {
+                    throw new ApplicationException("Invalid JSON format in encrypted content.", jex);
+                }
 
                 var newPayload = new
                 {
-                    payload.result.doc,
-                    payload.result.iv
+                    doc = (string)payload.result.doc,
+                    iv = (string)payload.result.iv
                 };
 
-                string _doc = newPayload.doc;
-                var decodedDoc = Convert.FromBase64String(_doc);
-
-                string _iv = newPayload.iv;
-                var iv = Convert.FromBase64String(_iv);
+                // Decode Base64 values
+                byte[] decodedDoc, iv;
+                try
+                {
+                    decodedDoc = Convert.FromBase64String(newPayload.doc);
+                    iv = Convert.FromBase64String(newPayload.iv);
+                }
+                catch (FormatException fex)
+                {
+                    throw new ApplicationException("Invalid Base64 encoding in doc or iv.", fex);
+                }
 
                 var password = GeneratePassword(cipherKey);
 
-                xmlPayloadData = DecryptUsingAES(decodedDoc, password, iv);
+                // Try decryption
+                string xmlPayloadData;
+                try
+                {
+                    xmlPayloadData = DecryptUsingAES(decodedDoc, password, iv);
+                }
+                catch (CryptographicException cex)
+                {
+                    throw new ApplicationException("Decryption failed. Possible wrong key/IV or corrupted payload.", cex);
+                }
+
+                // Optional: Validate if result looks like XML/JSON
+                if (!string.IsNullOrWhiteSpace(xmlPayloadData))
+                {
+                    string trimmed = xmlPayloadData.TrimStart();
+                    if (!(trimmed.StartsWith("<") || trimmed.StartsWith("{")))
+                    {
+                        throw new ApplicationException("Decryption succeeded, but payload is not valid XML or JSON.");
+                    }
+                }
 
                 return xmlPayloadData;
             }
             catch (Exception ex)
             {
-                throw new ApplicationException($"Cryptography exception occurred! {ex.Message}");
+                // Keep outer exception handler
+                throw new ApplicationException($"Cryptography exception occurred! {ex.Message}", ex);
             }
         }
+
+        //public string DecryptRestPayloadData(string encryptedContent, string cipherKey)
+        //{
+        //    try
+        //    {
+        //        if (string.IsNullOrEmpty(encryptedContent)) throw new Exception("XML payload cannot be null or empty string!");
+
+        //        var xmlPayloadData = "";
+
+        //        var payload = JsonConvert.DeserializeObject<dynamic>(encryptedContent);
+
+        //        var newPayload = new
+        //        {
+        //            payload.result.doc,
+        //            payload.result.iv
+        //        };
+
+        //        string _doc = newPayload.doc;
+        //        var decodedDoc = Convert.FromBase64String(_doc);
+
+        //        string _iv = newPayload.iv;
+        //        var iv = Convert.FromBase64String(_iv);
+
+        //        var password = GeneratePassword(cipherKey);
+
+        //        xmlPayloadData = DecryptUsingAES(decodedDoc, password, iv);
+
+        //        return xmlPayloadData;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        throw new ApplicationException($"Cryptography exception occurred! {ex.Message}");
+        //    }
+        //}
 
         private byte[] GeneratePassword(string cipherKey)
         {

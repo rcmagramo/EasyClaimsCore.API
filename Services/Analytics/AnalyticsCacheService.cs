@@ -267,5 +267,21 @@ namespace EasyClaimsCore.API.Services.Analytics
             // Don't cache exports as they can be large and are typically one-time requests
             return await _baseService.ExportDataAsync(startDate, endDate, format);
         }
+
+        public async Task<bool> GenerateSampleDataAsync()
+        {
+            // Don't cache sample data generation - delegate directly to base service
+            // Also clear all cache after generating sample data
+            var result = await _baseService.GenerateSampleDataAsync();
+
+            if (result)
+            {
+                // Clear all analytics cache since we now have new data
+                await _cacheService.RemoveByPatternAsync("analytics:");
+                _logger.LogInformation("Cleared analytics cache after sample data generation");
+            }
+
+            return result;
+        }
     }
 }

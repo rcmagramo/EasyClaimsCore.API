@@ -11,11 +11,13 @@ namespace EasyClaimsCore.API.Controllers
     {
         private readonly IAnalyticsService _analyticsService;
         private readonly ILogger<AnalyticsController> _logger;
+        private readonly IWebHostEnvironment _environment;
 
-        public AnalyticsController(IAnalyticsService analyticsService, ILogger<AnalyticsController> logger)
+        public AnalyticsController(IAnalyticsService analyticsService, ILogger<AnalyticsController> logger, IWebHostEnvironment environment)
         {
             _analyticsService = analyticsService;
             _logger = logger;
+            _environment = environment;
         }
 
         /// <summary>
@@ -242,13 +244,6 @@ namespace EasyClaimsCore.API.Controllers
                     <button onclick=""exportData()"" class=""bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-200"">
                         <i class=""fas fa-download mr-2""></i>Export
                     </button>
-                    <!-- DEBUG BUTTONS - Remove these after testing -->
-                    <button onclick=""testUIUpdates()"" class=""bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-200"">
-                        Test UI
-                    </button>
-                    <button onclick=""testWithoutDateFilter()"" class=""bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-200"">
-                        Test API
-                    </button>
                 </div>
             </div>
         </div>
@@ -263,7 +258,7 @@ namespace EasyClaimsCore.API.Controllers
                 <div class=""flex items-center justify-between"">
                     <div>
                         <p class=""text-sm font-medium text-gray-600"">Total API Calls</p>
-                        <p id=""totalCalls"" class=""text-3xl font-bold text-gray-900 mt-2"">-</p>
+                        <p id=""totalCalls"" class=""text-3xl font-bold text-gray-900 mt-2"">0</p>
                         <p id=""totalCallsChange"" class=""text-sm text-gray-500 mt-1"">vs previous period</p>
                     </div>
                     <div class=""p-3 bg-blue-100 rounded-full"">
@@ -282,7 +277,7 @@ namespace EasyClaimsCore.API.Controllers
                 <div class=""flex items-center justify-between"">
                     <div>
                         <p class=""text-sm font-medium text-gray-600"">Success Rate</p>
-                        <p id=""successRate"" class=""text-3xl font-bold text-gray-900 mt-2"">-</p>
+                        <p id=""successRate"" class=""text-3xl font-bold text-gray-900 mt-2"">0%</p>
                         <p id=""successRateChange"" class=""text-sm text-gray-500 mt-1"">vs previous period</p>
                     </div>
                     <div class=""p-3 bg-green-100 rounded-full"">
@@ -301,7 +296,7 @@ namespace EasyClaimsCore.API.Controllers
                 <div class=""flex items-center justify-between"">
                     <div>
                         <p class=""text-sm font-medium text-gray-600"">Avg Response Time</p>
-                        <p id=""avgResponseTime"" class=""text-3xl font-bold text-gray-900 mt-2"">-</p>
+                        <p id=""avgResponseTime"" class=""text-3xl font-bold text-gray-900 mt-2"">0ms</p>
                         <p id=""avgResponseTimeChange"" class=""text-sm text-gray-500 mt-1"">vs previous period</p>
                     </div>
                     <div class=""p-3 bg-yellow-100 rounded-full"">
@@ -320,7 +315,7 @@ namespace EasyClaimsCore.API.Controllers
                 <div class=""flex items-center justify-between"">
                     <div>
                         <p class=""text-sm font-medium text-gray-600"">Active Hospitals</p>
-                        <p id=""activeHospitals"" class=""text-3xl font-bold text-gray-900 mt-2"">-</p>
+                        <p id=""activeHospitals"" class=""text-3xl font-bold text-gray-900 mt-2"">0</p>
                         <p id=""activeHospitalsChange"" class=""text-sm text-gray-500 mt-1"">vs previous period</p>
                     </div>
                     <div class=""p-3 bg-purple-100 rounded-full"">
@@ -344,9 +339,6 @@ namespace EasyClaimsCore.API.Controllers
                     <div class=""flex space-x-2"">
                         <button onclick=""toggleChartType('apiUsage')"" class=""text-sm text-gray-500 hover:text-gray-700"">
                             <i class=""fas fa-chart-pie""></i>
-                        </button>
-                        <button class=""text-sm text-gray-500 hover:text-gray-700"">
-                            <i class=""fas fa-download""></i>
                         </button>
                     </div>
                 </div>
@@ -372,7 +364,7 @@ namespace EasyClaimsCore.API.Controllers
             </div>
         </div>
 
-        <!-- Performance and Errors Row -->
+        <!-- Performance and Activity Row -->
         <div class=""grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"">
             <!-- Performance Distribution -->
             <div class=""bg-white rounded-xl shadow-lg p-6 card-hover"">
@@ -384,20 +376,6 @@ namespace EasyClaimsCore.API.Controllers
                 </div>
             </div>
             
-            <!-- Error Analysis -->
-            <div class=""bg-white rounded-xl shadow-lg p-6 card-hover"">
-                <div class=""flex items-center justify-between mb-6"">
-                    <h3 class=""text-lg font-semibold text-gray-900"">Error Analysis</h3>
-                    <span id=""errorRate"" class=""px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium"">0% Error Rate</span>
-                </div>
-                <div id=""errorCategories"" class=""space-y-3"">
-                    <!-- Error categories will be populated here -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Tables Row -->
-        <div class=""grid grid-cols-1 lg:grid-cols-2 gap-6"">
             <!-- Recent Activity -->
             <div class=""bg-white rounded-xl shadow-lg card-hover"">
                 <div class=""px-6 py-4 border-b border-gray-200 flex items-center justify-between"">
@@ -417,16 +395,16 @@ namespace EasyClaimsCore.API.Controllers
                     </div>
                 </div>
             </div>
-            
-            <!-- Top Hospitals -->
-            <div class=""bg-white rounded-xl shadow-lg card-hover"">
-                <div class=""px-6 py-4 border-b border-gray-200"">
-                    <h3 class=""text-lg font-semibold text-gray-900"">Top Hospitals</h3>
-                </div>
-                <div class=""p-6"">
-                    <div id=""topHospitals"" class=""space-y-4 max-h-96 overflow-y-auto"">
-                        <!-- Hospital stats will be inserted here -->
-                    </div>
+        </div>
+
+        <!-- Top Hospitals -->
+        <div class=""bg-white rounded-xl shadow-lg card-hover"">
+            <div class=""px-6 py-4 border-b border-gray-200"">
+                <h3 class=""text-lg font-semibold text-gray-900"">Top Hospitals</h3>
+            </div>
+            <div class=""p-6"">
+                <div id=""topHospitals"" class=""grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto"">
+                    <!-- Hospital stats will be inserted here -->
                 </div>
             </div>
         </div>
@@ -481,137 +459,78 @@ namespace EasyClaimsCore.API.Controllers
                 // Show loading state
                 showLoadingSkeletons(true);
                 
-                // Build URLs with debug logging
-                const urls = {
-                    overview: `${API_BASE}/overview?startDate=${dates.start}&endDate=${dates.end}`,
-                    activity: `${API_BASE}/activity?limit=15`,
-                    hospitals: `${API_BASE}/hospitals?startDate=${dates.start}&endDate=${dates.end}`
-                };
-                
-                console.log('API URLs being called:', urls);
-                
-                // Load data one by one to better debug
+                // Load overview data
                 console.log('Fetching overview...');
-                const overviewResponse = await fetch(urls.overview);
+                const overviewResponse = await fetch(`${API_BASE}/overview?startDate=${dates.start}&endDate=${dates.end}`);
+                
+                if (!overviewResponse.ok) {
+                    throw new Error(`HTTP ${overviewResponse.status}: ${overviewResponse.statusText}`);
+                }
+                
                 const overview = await overviewResponse.json();
-                console.log('Overview RAW response:', overview);
-                console.log('Overview keys:', Object.keys(overview));
+                console.log('Overview response:', overview);
                 
-                // Extract overview data using multiple strategies
-                let overviewData = null;
-                
-                if (overview) {
-                    // Strategy 1: Standard {success: true, data: {...}} format
-                    if (overview.success && overview.data) {
-                        console.log('Using strategy 1: overview.data');
-                        overviewData = overview.data;
-                    }
-                    // Strategy 2: Direct data format {...}
-                    else if (overview.totalCalls !== undefined || overview.TotalCalls !== undefined) {
-                        console.log('Using strategy 2: direct data');
-                        overviewData = overview;
-                    }
-                    // Strategy 3: Nested result format
-                    else if (overview.result) {
-                        console.log('Using strategy 3: overview.result');
-                        overviewData = overview.result;
-                    }
-                    // Strategy 4: Check all properties
-                    else {
-                        console.log('Trying strategy 4: checking all properties');
-                        console.log('Available properties:', Object.keys(overview));
-                        // Try to find data in any property that looks like it contains the overview data
-                        for (const key of Object.keys(overview)) {
-                            const value = overview[key];
-                            if (value && typeof value === 'object' && (value.totalCalls !== undefined || value.TotalCalls !== undefined)) {
-                                console.log(`Found data in property: ${key}`);
-                                overviewData = value;
-                                break;
-                            }
-                        }
-                    }
-                }
-                
-                console.log('Extracted overview data:', overviewData);
-                
-                // Update overview cards
-                if (overviewData) {
-                    console.log('Updating overview cards...');
-                    // Normalize property names (handle both camelCase and PascalCase)
-                    const normalizedData = {
-                        totalCalls: overviewData.totalCalls || overviewData.TotalCalls || 0,
-                        successRate: overviewData.successRate || overviewData.SuccessRate || 0,
-                        averageResponseTime: overviewData.averageResponseTime || overviewData.AverageResponseTime || 0,
-                        activeHospitals: overviewData.activeHospitals || overviewData.ActiveHospitals || 0
-                    };
-                    console.log('Normalized overview data:', normalizedData);
-                    updateOverviewCards(normalizedData);
+                // Update overview cards - data should be in overview.data due to ApiResponse wrapper
+                if (overview && overview.success && overview.data) {
+                    updateOverviewCards(overview.data);
                 } else {
-                    console.error('Could not extract overview data');
-                    updateOverviewCards({ totalCalls: 0, successRate: 0, averageResponseTime: 0, activeHospitals: 0 });
+                    console.error('Invalid overview response structure:', overview);
+                    updateOverviewCards({});
                 }
                 
-                // Handle activity data
+                // Load API usage data for charts
+                console.log('Fetching API usage...');
+                const apiUsageResponse = await fetch(`${API_BASE}/api-usage?startDate=${dates.start}&endDate=${dates.end}`);
+                if (apiUsageResponse.ok) {
+                    const apiUsage = await apiUsageResponse.json();
+                    console.log('API usage response:', apiUsage);
+                    if (apiUsage && apiUsage.success && apiUsage.data) {
+                        updateApiUsageChart(apiUsage.data);
+                    }
+                }
+                
+                // Load trends data
+                console.log('Fetching trends...');
+                const trendsResponse = await fetch(`${API_BASE}/trends?startDate=${dates.start}&endDate=${dates.end}&groupBy=hour`);
+                if (trendsResponse.ok) {
+                    const trends = await trendsResponse.json();
+                    console.log('Trends response:', trends);
+                    if (trends && trends.success && trends.data) {
+                        updateTrendsChart(trends.data);
+                    }
+                }
+                
+                // Load performance data
+                console.log('Fetching performance...');
+                const performanceResponse = await fetch(`${API_BASE}/performance?startDate=${dates.start}&endDate=${dates.end}`);
+                if (performanceResponse.ok) {
+                    const performance = await performanceResponse.json();
+                    console.log('Performance response:', performance);
+                    if (performance && performance.success && performance.data) {
+                        updatePerformanceChart(performance.data);
+                    }
+                }
+                
+                // Load recent activity
                 console.log('Fetching activity...');
-                const activityResponse = await fetch(urls.activity);
-                const activity = await activityResponse.json();
-                console.log('Activity RAW response:', activity);
-                
-                let activityData = null;
-                if (activity) {
-                    if (activity.success && activity.data && Array.isArray(activity.data)) {
-                        activityData = activity.data;
-                    } else if (Array.isArray(activity)) {
-                        activityData = activity;
-                    } else if (activity.result && Array.isArray(activity.result)) {
-                        activityData = activity.result;
-                    } else {
-                        // Check all properties for array data
-                        for (const key of Object.keys(activity)) {
-                            if (Array.isArray(activity[key])) {
-                                activityData = activity[key];
-                                break;
-                            }
-                        }
+                const activityResponse = await fetch(`${API_BASE}/activity?limit=15`);
+                if (activityResponse.ok) {
+                    const activity = await activityResponse.json();
+                    console.log('Activity response:', activity);
+                    if (activity && activity.success && activity.data) {
+                        updateRecentActivity(activity.data);
                     }
                 }
                 
-                console.log('Extracted activity data:', activityData?.length || 0, 'items');
-                if (activityData && activityData.length > 0) {
-                    updateRecentActivity(activityData);
-                } else {
-                    updateRecentActivity([]);
-                }
-                
-                // Handle hospitals data  
+                // Load hospitals data
                 console.log('Fetching hospitals...');
-                const hospitalsResponse = await fetch(urls.hospitals);
-                const hospitals = await hospitalsResponse.json();
-                console.log('Hospitals RAW response:', hospitals);
-                
-                let hospitalsData = null;
-                if (hospitals) {
-                    if (hospitals.success && hospitals.data && Array.isArray(hospitals.data)) {
-                        hospitalsData = hospitals.data;
-                    } else if (Array.isArray(hospitals)) {
-                        hospitalsData = hospitals;
-                    } else if (hospitals.result && Array.isArray(hospitals.result)) {
-                        hospitalsData = hospitals.result;
-                    } else {
-                        for (const key of Object.keys(hospitals)) {
-                            if (Array.isArray(hospitals[key])) {
-                                hospitalsData = hospitals[key];
-                                break;
-                            }
-                        }
+                const hospitalsResponse = await fetch(`${API_BASE}/hospitals?startDate=${dates.start}&endDate=${dates.end}`);
+                if (hospitalsResponse.ok) {
+                    const hospitals = await hospitalsResponse.json();
+                    console.log('Hospitals response:', hospitals);
+                    if (hospitals && hospitals.success && hospitals.data) {
+                        updateTopHospitals(hospitals.data);
                     }
-                }
-                
-                console.log('Extracted hospitals data:', hospitalsData?.length || 0, 'items');
-                if (hospitalsData && hospitalsData.length > 0) {
-                    updateTopHospitals(hospitalsData);
-                } else {
-                    updateTopHospitals([]);
                 }
                 
                 updateConnectionStatus('connected');
@@ -622,21 +541,8 @@ namespace EasyClaimsCore.API.Controllers
             } catch (error) {
                 console.error('Error loading dashboard data:', error);
                 updateConnectionStatus('error');
-                showNotification('Failed to load dashboard data', 'error');
+                showNotification(`Failed to load dashboard data: ${error.message}`, 'error');
                 showLoadingSkeletons(false);
-            }
-        }
-        
-        async function fetchWithRetry(url, retries = 3) {
-            for (let i = 0; i < retries; i++) {
-                try {
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    return await response.json();
-                } catch (error) {
-                    if (i === retries - 1) throw error;
-                    await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-                }
             }
         }
         
@@ -666,86 +572,54 @@ namespace EasyClaimsCore.API.Controllers
                     start.setDate(start.getDate() - 7);
             }
             
-            const result = { start: start.toISOString(), end: end };
-            console.log('Date range calculation:', { range, result }); // DEBUG LOG
-            return result;
+            return { start: start.toISOString(), end: end };
         }
         
         function updateOverviewCards(data) {
-            console.log('updateOverviewCards called with:', data); // DEBUG
+            console.log('updateOverviewCards called with:', data);
             
-            // Safely handle potentially undefined data
             if (!data) {
                 console.warn('No overview data received');
-                return;
+                data = {};
             }
             
-            // Get elements
-            const totalCallsEl = document.getElementById('totalCalls');
-            const successRateEl = document.getElementById('successRate');
-            const avgResponseTimeEl = document.getElementById('avgResponseTime');
-            const activeHospitalsEl = document.getElementById('activeHospitals');
-            
-            // Check if elements exist
-            if (!totalCallsEl || !successRateEl || !avgResponseTimeEl || !activeHospitalsEl) {
-                console.error('One or more overview card elements not found');
-                return;
-            }
-            
-            // Update directly first, then animate
+            // Extract values with defaults
             const totalCalls = data.totalCalls || 0;
             const successRate = data.successRate || 0;
             const avgResponseTime = data.averageResponseTime || 0;
             const activeHospitals = data.activeHospitals || 0;
             
-            console.log('Updating with values:', { totalCalls, successRate, avgResponseTime, activeHospitals }); // DEBUG
+            console.log('Updating with values:', { totalCalls, successRate, avgResponseTime, activeHospitals });
             
-            // Update text content directly
-            totalCallsEl.textContent = totalCalls.toLocaleString();
-            successRateEl.textContent = successRate.toFixed(1) + '%';
-            avgResponseTimeEl.textContent = Math.round(avgResponseTime) + 'ms';
-            activeHospitalsEl.textContent = activeHospitals.toString();
+            // Update text content
+            document.getElementById('totalCalls').textContent = totalCalls.toLocaleString();
+            document.getElementById('successRate').textContent = successRate.toFixed(1) + '%';
+            document.getElementById('avgResponseTime').textContent = Math.round(avgResponseTime) + 'ms';
+            document.getElementById('activeHospitals').textContent = activeHospitals.toString();
             
             // Update progress bars
             updateProgressBar('totalCallsProgress', Math.min(100, totalCalls / 100));
             updateProgressBar('successRateProgress', successRate);
-            updateProgressBar('responseTimeProgress', Math.min(100, avgResponseTime / 50));
-            updateProgressBar('hospitalsProgress', Math.min(100, activeHospitals * 10));
-            
-            console.log('Overview cards updated successfully'); // DEBUG
-        }
-        
-        function animateNumber(elementId, targetValue) {
-            const element = document.getElementById(elementId);
-            const startValue = parseInt(element.textContent.replace(/,/g, '')) || 0;
-            const duration = 1000;
-            const startTime = performance.now();
-            
-            function updateValue(currentTime) {
-                const elapsed = currentTime - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                const currentValue = Math.floor(startValue + (targetValue - startValue) * progress);
-                element.textContent = currentValue.toLocaleString();
-                
-                if (progress < 1) {
-                    requestAnimationFrame(updateValue);
-                }
-            }
-            
-            requestAnimationFrame(updateValue);
+            updateProgressBar('responseTimeProgress', Math.max(0, 100 - (avgResponseTime / 50)));
+            updateProgressBar('hospitalsProgress', Math.min(100, activeHospitals * 20));
         }
         
         function updateProgressBar(elementId, percentage) {
             const element = document.getElementById(elementId);
-            setTimeout(() => {
-                element.style.width = `${Math.min(percentage, 100)}%`;
-            }, 100);
+            if (element) {
+                setTimeout(() => {
+                    element.style.width = `${Math.min(Math.max(percentage, 0), 100)}%`;
+                }, 100);
+            }
         }
         
         function updateApiUsageChart(data) {
-            if (!data || !Array.isArray(data)) {
+            console.log('updateApiUsageChart called with:', data);
+            
+            if (!data || !Array.isArray(data) || data.length === 0) {
                 console.warn('No API usage data received or invalid format');
-                return;
+                // Show empty chart
+                data = [{ methodName: 'No Data', callCount: 1 }];
             }
             
             const ctx = document.getElementById('apiUsageChart').getContext('2d');
@@ -783,7 +657,7 @@ namespace EasyClaimsCore.API.Controllers
                             callbacks: {
                                 label: function(context) {
                                     const item = data[context.dataIndex];
-                                    if (!item) return context.label;
+                                    if (!item || item.methodName === 'No Data') return context.label;
                                     return [
                                         `${context.label}: ${context.parsed}`,
                                         `Success Rate: ${(item.successRate || 0).toFixed(1)}%`,
@@ -801,9 +675,11 @@ namespace EasyClaimsCore.API.Controllers
         }
         
         function updateTrendsChart(data) {
-            if (!data || !Array.isArray(data)) {
+            console.log('updateTrendsChart called with:', data);
+            
+            if (!data || !Array.isArray(data) || data.length === 0) {
                 console.warn('No trends data received or invalid format');
-                return;
+                data = [{ timestamp: new Date().toISOString(), callCount: 0, successCount: 0 }];
             }
             
             const ctx = document.getElementById('trendsChart').getContext('2d');
@@ -837,8 +713,7 @@ namespace EasyClaimsCore.API.Controllers
                             data: data.map(item => item.successCount || 0),
                             borderColor: '#10B981',
                             backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            tension: 0.4,
-                            yAxisID: 'y1'
+                            tension: 0.4
                         }
                     ]
                 },
@@ -848,14 +723,7 @@ namespace EasyClaimsCore.API.Controllers
                     interaction: { intersect: false, mode: 'index' },
                     scales: {
                         y: { 
-                            beginAtZero: true,
-                            position: 'left'
-                        },
-                        y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            grid: { drawOnChartArea: false }
+                            beginAtZero: true
                         }
                     },
                     plugins: {
@@ -866,9 +734,11 @@ namespace EasyClaimsCore.API.Controllers
         }
         
         function updatePerformanceChart(data) {
-            if (!data) {
+            console.log('updatePerformanceChart called with:', data);
+            
+            if (!data || !data.responseTimeDistribution) {
                 console.warn('No performance data received');
-                return;
+                data = { responseTimeDistribution: [{ range: 'No Data', count: 1 }] };
             }
             
             const ctx = document.getElementById('performanceChart');
@@ -939,69 +809,31 @@ namespace EasyClaimsCore.API.Controllers
             const container = document.getElementById('topHospitals');
             
             if (!data || !Array.isArray(data) || data.length === 0) {
-                container.innerHTML = '<p class=""text-gray-500 text-center py-4"">No hospital data</p>';
+                container.innerHTML = '<p class=""text-gray-500 text-center py-4 col-span-full"">No hospital data</p>';
                 return;
             }
             
-            container.innerHTML = data.slice(0, 10).map((item, index) => `
-                <div class=""flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors"">
+            container.innerHTML = data.slice(0, 12).map((item, index) => `
+                <div class=""flex items-center justify-between p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors"">
                     <div class=""flex items-center space-x-3"">
                         <span class=""flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-800 text-sm font-medium rounded-full"">
                             ${index + 1}
                         </span>
                         <div>
                             <p class=""text-sm font-medium text-gray-900"">${item.hospitalId || 'Unknown'}</p>
-                            <p class=""text-xs text-gray-500"">${item.totalCalls || 0} calls • ${(item.successRate || 0).toFixed(1)}% success</p>
+                            <p class=""text-xs text-gray-500"">${item.totalCalls || 0} calls</p>
                         </div>
                     </div>
                     <div class=""text-right"">
-                        <div class=""w-16 bg-gray-200 rounded-full h-2"">
+                        <div class=""text-sm font-medium text-gray-900"">${(item.successRate || 0).toFixed(1)}%</div>
+                        <div class=""w-16 bg-gray-200 rounded-full h-2 mt-1"">
                             <div class=""bg-green-600 h-2 rounded-full"" style=""width: ${Math.min(100, item.successRate || 0)}%""></div>
                         </div>
-                        <p class=""text-xs text-gray-500 mt-1"">${Math.round(item.averageResponseTime || 0)}ms avg</p>
                     </div>
                 </div>
             `).join('');
         }
         
-        function updateErrorAnalysis(data) {
-            if (!data) {
-                console.warn('No error analysis data received');
-                return;
-            }
-            
-            const errorRateElement = document.getElementById('errorRate');
-            const categoriesContainer = document.getElementById('errorCategories');
-            
-            if (errorRateElement) {
-                errorRateElement.textContent = `${(data.errorRate || 0).toFixed(1)}% Error Rate`;
-                errorRateElement.className = `px-3 py-1 rounded-full text-sm font-medium ${
-                    (data.errorRate || 0) > 5 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                }`;
-            }
-            
-            if (categoriesContainer) {
-                if (!data.errorsByCategory || data.errorsByCategory.length === 0) {
-                    categoriesContainer.innerHTML = '<p class=""text-gray-500 text-center py-4"">No errors to analyze</p>';
-                    return;
-                }
-                
-                categoriesContainer.innerHTML = data.errorsByCategory.map(category => `
-                    <div class=""flex items-center justify-between"">
-                        <div class=""flex items-center space-x-3"">
-                            <div class=""w-3 h-3 bg-red-500 rounded-full""></div>
-                            <span class=""text-sm text-gray-700"">${category.category || 'Unknown'}</span>
-                        </div>
-                        <div class=""flex items-center space-x-2"">
-                            <span class=""text-sm font-medium text-gray-900"">${category.count || 0}</span>
-                            <span class=""text-xs text-gray-500"">(${(category.percentage || 0).toFixed(1)}%)</span>
-                        </div>
-                    </div>
-                `).join('');
-            }
-        }
-        
-        // Utility functions
         function formatTimestamp(timestamp) {
             const date = new Date(timestamp);
             const now = new Date();
@@ -1021,9 +853,6 @@ namespace EasyClaimsCore.API.Controllers
         }
         
         function showLoadingSkeletons(show) {
-            console.log('showLoadingSkeletons called with:', show); // DEBUG
-            
-            // Add/remove loading skeleton classes
             const elements = ['totalCalls', 'successRate', 'avgResponseTime', 'activeHospitals'];
             elements.forEach(id => {
                 const element = document.getElementById(id);
@@ -1033,10 +862,7 @@ namespace EasyClaimsCore.API.Controllers
                         element.textContent = '';
                     } else {
                         element.classList.remove('loading-skeleton');
-                        // Don't clear content here - let update functions handle it
                     }
-                } else {
-                    console.warn(`Element ${id} not found for loading skeleton`);
                 }
             });
         }
@@ -1070,12 +896,10 @@ namespace EasyClaimsCore.API.Controllers
             
             container.appendChild(notification);
             
-            // Animate in
             setTimeout(() => {
                 notification.classList.remove('translate-x-full');
             }, 100);
             
-            // Remove after delay
             setTimeout(() => {
                 notification.classList.add('translate-x-full');
                 setTimeout(() => container.removeChild(notification), 300);
@@ -1085,12 +909,11 @@ namespace EasyClaimsCore.API.Controllers
         function toggleChartType(chartName) {
             if (chartName === 'apiUsage') {
                 currentChartTypes.apiUsage = currentChartTypes.apiUsage === 'doughnut' ? 'bar' : 'doughnut';
-                loadDashboardData(); // Reload to update chart
+                loadDashboardData();
             }
         }
         
         function setupAutoRefresh() {
-            // Refresh every 30 seconds
             setInterval(() => {
                 loadDashboardData();
             }, 30000);
@@ -1103,7 +926,9 @@ namespace EasyClaimsCore.API.Controllers
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                updateRecentActivity(data.data);
+                if (data && data.success && data.data) {
+                    updateRecentActivity(data.data);
+                }
             } catch (error) {
                 console.error('Error loading recent activity:', error);
             }
@@ -1117,7 +942,9 @@ namespace EasyClaimsCore.API.Controllers
             try {
                 const response = await fetch(`${API_BASE}/trends?startDate=${dates.start}&endDate=${dates.end}&groupBy=${groupBy}`);
                 const data = await response.json();
-                updateTrendsChart(data.data);
+                if (data && data.success && data.data) {
+                    updateTrendsChart(data.data);
+                }
             } catch (error) {
                 console.error('Error updating trends chart:', error);
             }
@@ -1153,80 +980,41 @@ namespace EasyClaimsCore.API.Controllers
         
         // Event listeners
         document.getElementById('dateRange').addEventListener('change', loadDashboardData);
-        
-        // DEBUG FUNCTION - Test without date filtering
-        async function testWithoutDateFilter() {
-            console.log('Testing APIs without date filters...');
-            
-            try {
-                // Test overview without any date parameters
-                const overviewResponse = await fetch('/api/analytics/overview');
-                const overviewData = await overviewResponse.json();
-                console.log('Overview without dates:', overviewData);
-                
-                // Test with very wide date range
-                const wideStart = '2020-01-01T00:00:00Z';
-                const wideEnd = new Date().toISOString();
-                const wideOverview = await fetch(`/api/analytics/overview?startDate=${wideStart}&endDate=${wideEnd}`);
-                const wideData = await wideOverview.json();
-                console.log('Overview with wide date range:', wideData);
-                
-                // If this returns data, the issue is date filtering
-                if (wideData.data && wideData.data.totalCalls > 0) {
-                    alert('Found data with wide date range! Issue is with date filtering.');
-                    // Update cards with this data
-                    updateOverviewCards(wideData.data);
-                } else {
-                    alert('No data even with wide date range. Check your database queries in the analytics service.');
-                }
-                
-            } catch (error) {
-                console.error('Test error:', error);
-                alert('Test failed: ' + error.message);
-            }
-        }
-        
-        // DEBUG FUNCTION - Test UI updates with hardcoded data
-        function testUIUpdates() {
-            console.log('Testing UI updates with hardcoded data...');
-            
-            // Test overview cards with dummy data
-            const testData = {
-                totalCalls: 1234,
-                successRate: 95.5,
-                averageResponseTime: 850,
-                activeHospitals: 5
-            };
-            
-            console.log('Updating overview cards with test data:', testData);
-            updateOverviewCards(testData);
-            
-            // Test recent activity with dummy data
-            const testActivity = [
-                {
-                    methodName: 'GetRestToken',
-                    hospitalId: 'H92006568',
-                    status: 'Success',
-                    requested: new Date().toISOString(),
-                    responseTimeMs: 250
-                },
-                {
-                    methodName: 'eClaimsApiUpload',
-                    hospitalId: 'H12345678',
-                    status: 'Failed',
-                    requested: new Date(Date.now() - 300000).toISOString(),
-                    responseTimeMs: 1500
-                }
-            ];
-            
-            console.log('Updating recent activity with test data:', testActivity);
-            updateRecentActivity(testActivity);
-            
-            alert('UI test completed - check if the cards updated with test values');
-        }
     </script>
 </body>
 </html>";
+        }
+
+        /// <summary>
+        /// Generate sample data for testing (development only)
+        /// </summary>
+        [HttpPost("generate-sample-data")]
+        public async Task<ActionResult<ApiResponse<object>>> GenerateSampleData()
+        {
+            // Only allow in development environment
+            if (!_environment.IsDevelopment())
+            {
+                return BadRequest(ApiResponse<object>.CreateError("Sample data generation is only available in development environment"));
+            }
+
+            try
+            {
+                var generated = await _analyticsService.GenerateSampleDataAsync();
+
+                if (generated)
+                {
+                    return Ok(ApiResponse<object>.CreateSuccess(new { message = "Sample data generated successfully", count = "Multiple entries created" }));
+                }
+                else
+                {
+                    return Ok(ApiResponse<object>.CreateSuccess(new { message = "Sample data already exists or generation skipped" }));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating sample data");
+                return StatusCode(500, ApiResponse<object>.CreateError("Failed to generate sample data", "GENERATION_ERROR", System.Net.HttpStatusCode.InternalServerError));
+            }
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using EasyClaimsCore.API.Data;
+using EasyClaimsCore.API.Data.Entities;
 using EasyClaimsCore.API.Models.Analytics;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
@@ -19,44 +20,63 @@ namespace EasyClaimsCore.API.Services.Analytics
 
         public async Task<OverviewDto> GetOverviewAsync(DateTime? startDate = null, DateTime? endDate = null)
         {
-            var (start, end) = GetDateRange(startDate, endDate);
-
-            var logs = await _dbContext.APIRequestLogs
-                .Where(l => l.Requested >= start && l.Requested <= end)
-                .ToListAsync();
-
-            var totalCalls = logs.Count;
-            var successfulCalls = logs.Count(l => l.Status == "Success");
-            var failedCalls = totalCalls - successfulCalls;
-            var successRate = totalCalls > 0 ? (double)successfulCalls / totalCalls * 100 : 0;
-
-            // Calculate average response time from logs that have response times
-            var responseTimes = logs
-                .Where(l => l.Requested != null && l.Responded != null)
-                .Select(l => (l.Responded!.Value - l.Requested).TotalMilliseconds)
-                .ToList();
-
-            var averageResponseTime = responseTimes.Any() ? responseTimes.Average() : 0;
-
-            var activeHospitals = await _dbContext.APIRequestLogs
-                .Join(_dbContext.APIRequests, log => log.APIRequestId, req => req.Id, (log, req) => new { log, req })
-                .Where(x => x.log.Requested >= start && x.log.Requested <= end)
-                .Select(x => x.req.HospitalId)
-                .Distinct()
-                .CountAsync();
-
-            var totalChargeableItems = logs.Sum(l => l.ChargeableItems);
-
-            return new OverviewDto
+            try
             {
-                TotalCalls = totalCalls,
-                SuccessfulCalls = successfulCalls,
-                FailedCalls = failedCalls,
-                SuccessRate = successRate,
-                AverageResponseTime = Math.Round(averageResponseTime, 2),
-                ActiveHospitals = activeHospitals,
-                TotalChargeableItems = totalChargeableItems
-            };
+                var (start, end) = GetDateRange(startDate, endDate);
+
+                var logs = await _dbContext.APIRequestLogs
+                    .Where(l => l.Requested >= start && l.Requested <= end)
+                    .ToListAsync();
+
+                var totalCalls = logs.Count;
+                var successfulCalls = logs.Count(l => l.Status == "Success");
+                var failedCalls = totalCalls - successfulCalls;
+                var successRate = totalCalls > 0 ? (double)successfulCalls / totalCalls * 100 : 0;
+
+                // Calculate average response time from logs that have response times
+                var responseTimes = logs
+                    .Where(l => l.Requested != null && l.Responded != null)
+                    .Select(l => (l.Responded!.Value - l.Requested).TotalMilliseconds)
+                    .ToList();
+
+                var averageResponseTime = responseTimes.Any() ? responseTimes.Average() : 0;
+
+                var activeHospitals = await _dbContext.APIRequestLogs
+                    .Join(_dbContext.APIRequests, log => log.APIRequestId, req => req.Id, (log, req) => new { log, req })
+                    .Where(x => x.log.Requested >= start && x.log.Requested <= end)
+                    .Select(x => x.req.HospitalId)
+                    .Distinct()
+                    .CountAsync();
+
+                var totalChargeableItems = logs.Sum(l => l.ChargeableItems);
+
+                return new OverviewDto
+                {
+                    TotalCalls = totalCalls,
+                    SuccessfulCalls = successfulCalls,
+                    FailedCalls = failedCalls,
+                    SuccessRate = Math.Round(successRate, 1),
+                    AverageResponseTime = Math.Round(averageResponseTime, 2),
+                    ActiveHospitals = activeHospitals,
+                    TotalChargeableItems = totalChargeableItems
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting overview data");
+
+                // Return empty data instead of throwing
+                return new OverviewDto
+                {
+                    TotalCalls = 0,
+                    SuccessfulCalls = 0,
+                    FailedCalls = 0,
+                    SuccessRate = 0,
+                    AverageResponseTime = 0,
+                    ActiveHospitals = 0,
+                    TotalChargeableItems = 0
+                };
+            }
         }
 
         public async Task<List<ApiUsageDto>> GetApiUsageAsync(DateTime? startDate = null, DateTime? endDate = null, string? hospitalId = null)
@@ -412,6 +432,83 @@ namespace EasyClaimsCore.API.Services.Analytics
             }
 
             return Encoding.UTF8.GetBytes(csv.ToString());
+        }
+
+        public async Task<bool> GenerateSampleDataAsync()
+        {
+            try
+            {
+                // Check if we already have data
+                var existingLogs = await _dbContext.APIRequestLogs.CountAsync();
+                if (existingLogs > 0) return false; // Don't generate if data exists
+
+                var random = new Random();
+                var hospitals = new[] { "H92006568", "H12345678", "H87654321", "H11111111", "H22222222" };
+                var methods = new[] { "GetRestToken", "GetRestMemberPIN", "eClaimsApiUpload", "SearchRestCaseRate", "FetchClaimStatus" };
+                var statuses = new[] { "Success", "Success", "Success", "Failed", "Success" }; // Mostly success
+
+                var sampleLogs = new List<APIRequestLog>();
+
+                // Generate data for the last 30 days
+                for (int days = 30; days >= 0; days--)
+                {
+                    var baseDate = DateTime.UtcNow.AddDays(-days);
+
+                    // Generate 10-50 requests per day
+                    var requestsPerDay = random.Next(10, 51);
+
+                    for (int i = 0; i < requestsPerDay; i++)
+                    {
+                        var requestTime = baseDate.AddHours(random.Next(0, 24)).AddMinutes(random.Next(0, 60));
+                        var responseTime = requestTime.AddMilliseconds(random.Next(100, 3000));
+                        var hospital = hospitals[random.Next(hospitals.Length)];
+                        var method = methods[random.Next(methods.Length)];
+                        var status = statuses[random.Next(statuses.Length)];
+
+                        // Find or create API request
+                        var apiRequest = await _dbContext.APIRequests
+                            .FirstOrDefaultAsync(a => a.HospitalId == hospital && a.MethodName == method);
+
+                        if (apiRequest == null)
+                        {
+                            apiRequest = new APIRequest
+                            {
+                                HospitalId = hospital,
+                                MethodName = method,
+                                IsActive = true
+                            };
+                            _dbContext.APIRequests.Add(apiRequest);
+                            await _dbContext.SaveChangesAsync();
+                        }
+
+                        var log = new APIRequestLog
+                        {
+                            APIRequestId = apiRequest.Id,
+                            ChargeableItems = method == "eClaimsApiUpload" ? random.Next(1, 10) : 0,
+                            RequestData = $"{{\"pmcc\":\"{hospital}\",\"method\":\"{method}\"}}",
+                            Response = status == "Success" ? "Success response" : "Error occurred",
+                            Status = status,
+                            Requested = requestTime,
+                            Responded = responseTime,
+                            CreatedBy = "SampleData",
+                            Created = requestTime
+                        };
+
+                        sampleLogs.Add(log);
+                    }
+                }
+
+                _dbContext.APIRequestLogs.AddRange(sampleLogs);
+                await _dbContext.SaveChangesAsync();
+
+                _logger.LogInformation($"Generated {sampleLogs.Count} sample log entries");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating sample data");
+                return false;
+            }
         }
     }
 }

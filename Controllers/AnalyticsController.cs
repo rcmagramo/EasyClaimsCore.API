@@ -352,7 +352,7 @@ namespace EasyClaimsCore.API.Controllers
                 <div class=""flex items-center justify-between mb-6"">
                     <h3 class=""text-lg font-semibold text-gray-900"">Usage Trends</h3>
                     <div class=""flex space-x-2"">
-                        <select id=""trendsGroupBy"" class=""text-sm border border-gray-300 rounded px-2 py-1"" onchange=""updateTrendsChart()"">
+                        <select id=""trendsGroupBy"" class=""text-sm border border-gray-300 rounded px-2 py-1"" onchange=""refreshTrendsChart()"">
                             <option value=""hour"">Hourly</option>
                             <option value=""day"">Daily</option>
                         </select>
@@ -934,19 +934,31 @@ namespace EasyClaimsCore.API.Controllers
             }
         }
         
-        async function updateTrendsChart() {
+        async function refreshTrendsChart() {
             const groupBy = document.getElementById('trendsGroupBy').value;
             const dateRange = document.getElementById('dateRange').value;
             const dates = getDateRange(dateRange);
             
             try {
+                console.log('Refreshing trends chart with groupBy:', groupBy);
                 const response = await fetch(`${API_BASE}/trends?startDate=${dates.start}&endDate=${dates.end}&groupBy=${groupBy}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const data = await response.json();
+                console.log('Trends refresh response:', data);
+                
                 if (data && data.success && data.data) {
                     updateTrendsChart(data.data);
+                } else {
+                    console.error('Invalid trends response structure:', data);
+                    updateTrendsChart([]);
                 }
             } catch (error) {
-                console.error('Error updating trends chart:', error);
+                console.error('Error refreshing trends chart:', error);
+                updateTrendsChart([]);
             }
         }
         

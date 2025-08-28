@@ -39,7 +39,7 @@ namespace EasyClaimsCore.API.Services
             IHttpClientFactory httpClientFactory,
             ICryptoEngine cryptoEngine,
             ITokenHandler tokenHandler,
-            ICipherKeyService cipherKeyService, 
+            ICipherKeyService cipherKeyService,
             IConfiguration configuration,
             ILogger<EClaimsService> logger)
         {
@@ -481,7 +481,7 @@ namespace EasyClaimsCore.API.Services
                 };
 
                 var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-                var cipherKey = await GetCipherKeyAsync(request.pmcc); 
+                var cipherKey = await GetCipherKeyAsync(request.pmcc);
                 var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(
                     JsonConvert.SerializeObject(doctorPAN), cipherKey);
 
@@ -535,7 +535,7 @@ namespace EasyClaimsCore.API.Services
 
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var cipherKey = await GetCipherKeyAsync(request.pmcc);
-           
+
             var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
             httpClient.DefaultRequestHeaders.Clear();
             httpClient.DefaultRequestHeaders.Add("token", token);
@@ -645,7 +645,7 @@ namespace EasyClaimsCore.API.Services
         {
             var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var cipherKey = await GetCipherKeyAsync(request.pmcc);
-          
+
             ClearHeaders();
             AddHeaders(new Dictionary<string, string> { { "token", newtoken } });
 
@@ -773,7 +773,7 @@ namespace EasyClaimsCore.API.Services
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/getVoucherDetails?voucherno={request.VoucherNo}";
             var response = await MakeGetRequestAsync(endpoint);
 
-           
+
             if (response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
@@ -810,6 +810,9 @@ namespace EasyClaimsCore.API.Services
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var cipherKey = await GetCipherKeyAsync(request.pmcc);
 
+            ClearHeaders();
+            AddHeaders(new Dictionary<string, string> { { "token", token } });
+
             JObject jsonObj = JObject.Parse(JsonConvert.SerializeObject(new { Xml = request.Xml }));
             string xmlString = jsonObj["Xml"]?.ToString() ?? "";
 
@@ -818,32 +821,41 @@ namespace EasyClaimsCore.API.Services
             xmlDoc.LoadXml(xmlString);
 
             var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(xmlString, cipherKey);
-
-            var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
-            httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("token", token);
-
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/eClaimsFileCheck";
-            var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
-            {
-                Content = new StringContent(encryptedPayload, Encoding.UTF8, "application/json")
-            };
-
-            var response = await httpClient.SendAsync(requestMessage);
+            var requestMessage = CreatePostRequestAsync(endpoint, token, encryptedPayload);
+            var response = await MakeSendRequestAsync(requestMessage);
 
             if (response.IsSuccessStatusCode)
             {
+                // after your line:
                 var responseContent = await response.Content.ReadAsStringAsync();
-                var resultXmlDoc = JsonConvert.DeserializeXmlNode(responseContent);
+                
 
-                return new
+                // parse the response to JObject
+                var json = JObject.Parse(responseContent);
+
+                if (json["success"] != null && json["success"].Value<bool>() == false)
                 {
-                    Message = "",
-                    Result = resultXmlDoc?.InnerText,
-                    Success = true
-                };
+                    // case #1: error response
+                    return new
+                    {
+                        Message = json["message"]?.ToString(),
+                        Result = (string)null,
+                        Success = false
+                    };
+                }
+                else
+                {
+                    var resultXmlDoc = JsonConvert.DeserializeXmlNode(responseContent);
+                    // case #2: success response
+                    return new
+                    {
+                        Message = "eClaims file check successful.",
+                        Result = resultXmlDoc?.InnerText,
+                        Success = true
+                    };
+                }
             }
-
             throw new ExternalApiException($"eClaims file check failed with status: {response.StatusCode}");
         }
 
@@ -1168,7 +1180,7 @@ namespace EasyClaimsCore.API.Services
             };
             string encryptedContent = JsonConvert.SerializeObject(Newrequest);
             var decryptedData = _cryptoEngine.DecryptRestPayloadData(encryptedContent, cipherKey);
-            
+
             // Load XML
             XmlDocument doc = new XmlDocument();
             doc.LoadXml(decryptedData);
@@ -1179,7 +1191,7 @@ namespace EasyClaimsCore.API.Services
             string cleanData = Regex.Replace(doc.InnerXml, "\"@([^\"]+)\":", "\"$1\":");
             string cleanedXml = cleanData.Replace("\\", "");
             cleanedXml = cleanedXml.Trim();
-          
+
             return new
             {
                 Message = "Decrypted mock response generated successfully",

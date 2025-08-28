@@ -24,6 +24,7 @@ namespace EasyClaimsCore.API.Controllers
         /// Get overall system analytics overview
         /// </summary>
         [HttpGet("overview")]
+        [ApiExplorerSettings(IgnoreApi = true)] // 👈 This hides it from Swagger
         public async Task<ActionResult<ApiResponse<object>>> GetOverview(
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null)
@@ -36,6 +37,7 @@ namespace EasyClaimsCore.API.Controllers
         /// Get API usage statistics by endpoint
         /// </summary>
         [HttpGet("api-usage")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ActionResult<ApiResponse<object>>> GetApiUsage(
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null,
@@ -49,6 +51,7 @@ namespace EasyClaimsCore.API.Controllers
         /// Get performance metrics and trends
         /// </summary>
         [HttpGet("performance")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ActionResult<ApiResponse<object>>> GetPerformanceMetrics(
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null,
@@ -62,6 +65,7 @@ namespace EasyClaimsCore.API.Controllers
         /// Get hospital activity and usage patterns
         /// </summary>
         [HttpGet("hospitals")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ActionResult<ApiResponse<object>>> GetHospitalAnalytics(
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null)
@@ -74,6 +78,7 @@ namespace EasyClaimsCore.API.Controllers
         /// Get error analysis and failure patterns
         /// </summary>
         [HttpGet("errors")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ActionResult<ApiResponse<object>>> GetErrorAnalysis(
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null,
@@ -87,6 +92,7 @@ namespace EasyClaimsCore.API.Controllers
         /// Get real-time activity feed
         /// </summary>
         [HttpGet("activity")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ActionResult<ApiResponse<object>>> GetRecentActivity(
             [FromQuery] int limit = 50,
             [FromQuery] string? status = null)
@@ -99,6 +105,7 @@ namespace EasyClaimsCore.API.Controllers
         /// Get time-based trends and patterns
         /// </summary>
         [HttpGet("trends")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ActionResult<ApiResponse<object>>> GetTrends(
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null,
@@ -112,6 +119,7 @@ namespace EasyClaimsCore.API.Controllers
         /// Export analytics data
         /// </summary>
         [HttpGet("export")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ActionResult> ExportData(
             [FromQuery] string format = "csv",
             [FromQuery] DateTime? startDate = null,
@@ -134,6 +142,7 @@ namespace EasyClaimsCore.API.Controllers
         /// Get dashboard page
         /// </summary>
         [HttpGet("dashboard")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public IActionResult GetDashboard()
         {
             return Content(GetDashboardHtml(), "text/html");
@@ -1001,6 +1010,7 @@ namespace EasyClaimsCore.API.Controllers
         /// Generate sample data for testing (development only)
         /// </summary>
         [HttpPost("generate-sample-data")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ActionResult<ApiResponse<object>>> GenerateSampleData()
         {
             // Only allow in development environment

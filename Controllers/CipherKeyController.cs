@@ -136,6 +136,7 @@ namespace EasyClaimsCore.API.Controllers
         /// </summary>
         /// <param name="request">Cipher key validation request</param>
         [HttpPost("validate")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public ActionResult<ApiResponse<object>> ValidateCipherKey([FromBody] ValidateCipherKeyRequest request)
         {
             try
@@ -160,6 +161,7 @@ namespace EasyClaimsCore.API.Controllers
         /// Generate a secure cipher key
         /// </summary>
         [HttpPost("generate")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public ActionResult<ApiResponse<object>> GenerateCipherKey([FromBody] GenerateCipherKeyRequest? request = null)
         {
             try

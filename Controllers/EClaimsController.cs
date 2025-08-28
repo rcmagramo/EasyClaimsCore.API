@@ -29,6 +29,7 @@ namespace EasyClaimsCore.API.Controllers
         /// Generates authentication token for API access
         /// </summary>
         [HttpPost("token")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         [Authorize]
         public async Task<ActionResult<ApiResponse<object>>> GetToken([FromBody] TokenRequest request)
         {
@@ -220,6 +221,7 @@ namespace EasyClaimsCore.API.Controllers
         /// Mock response for testing purposes
         /// </summary>
         [HttpPost("mock-response")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ActionResult<ApiResponse<object>>> MockResponse([FromBody] MockRequest request)
         {
             var result = await _eClaimsService.MockResponseAPI(request);

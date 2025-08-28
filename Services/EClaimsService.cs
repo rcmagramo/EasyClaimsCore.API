@@ -8,7 +8,9 @@ using EasyClaimsCore.API.Security.Cryptography;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.Reflection;
 using System.Security.AccessControl;
 using System.Security.Policy;
 using System.Text;
@@ -278,31 +280,43 @@ namespace EasyClaimsCore.API.Services
             var requestMessage = CreatePostRequestAsync(endpoint, newtoken, encryptedPayload);
             var response = await MakeSendRequestAsync(requestMessage);
 
-            //var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint);
-            //requestMessage.Headers.Add("token", newtoken);
-            //requestMessage.Content = new StringContent(
-            //    encryptedPayload,
-            //    Encoding.UTF8,
-            //    "application/json"
-            //);
-            //Stopwatch stopwatch = null;
-            //dynamic response = default(dynamic);
-            //stopwatch = Stopwatch.StartNew();
-            //response = await NewHttpClientFactory.Instance.SendAsync(requestMessage);
-            //stopwatch.Stop();
-
             if (response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
-                var jsonData = _cryptoEngine.DecryptRestPayloadData(responseContent, cipherKey);
-                XmlDocument xmlDoc = JsonConvert.DeserializeXmlNode(jsonData);
+                var data = JsonConvert.DeserializeObject<dynamic>(responseContent);
+                bool isSuccess = data?.success ?? false;
 
-                return new
+                if (!isSuccess)
                 {
-                    Message = "Data has been successfully retrieved.",
-                    Result = xmlDoc?.InnerText,
-                    Success = true
-                };
+                    var json = JObject.Parse(responseContent);
+                    return new
+                    {
+                        Message = json["message"]?.ToString(),
+                        Result = (string)null,
+                        Success = false
+                    };
+                }
+                else
+                {
+                    var jsonData = _cryptoEngine.DecryptRestPayloadData(responseContent, cipherKey);
+                    XmlDocument xmlDoc = JsonConvert.DeserializeXmlNode(jsonData);
+
+                    return new
+                    {
+                        Message = "Member PIN has been successfully retrieved.",
+                        Result = xmlDoc?.InnerText,
+                        Success = true
+                    };
+                }
+                //var jsonData = _cryptoEngine.DecryptRestPayloadData(responseContent, cipherKey);
+                //XmlDocument xmlDoc = JsonConvert.DeserializeXmlNode(jsonData);
+
+                //return new
+                //{
+                //    Message = "Member PIN has been successfully retrieved.",
+                //    Result = xmlDoc?.InnerText,
+                //    Success = true
+                //};
             }
 
             throw new ExternalApiException($"Member PIN request failed with status: {response.StatusCode}");
@@ -829,7 +843,7 @@ namespace EasyClaimsCore.API.Services
             {
                 // after your line:
                 var responseContent = await response.Content.ReadAsStringAsync();
-                
+
 
                 // parse the response to JObject
                 var json = JObject.Parse(responseContent);
@@ -895,7 +909,7 @@ namespace EasyClaimsCore.API.Services
                         Success = true
                     };
                 }
-                else 
+                else
                 {
                     return new
                     {
@@ -1262,7 +1276,23 @@ namespace EasyClaimsCore.API.Services
         private static string GetEnumDescription(string errorCodes)
         {
             // Implementation of error code description mapping
-            return errorCodes; // Simplified for now
+            //return errorCodes; // Simplified for now
+            var descriptions = errorCodes.Split(',')
+                .Select(code =>
+                {
+                    if (int.TryParse(code, out int errorCodeValue) && Enum.IsDefined(typeof(ErrorCodes), errorCodeValue))
+                    {
+                        var errorCode = (ErrorCodes)errorCodeValue;
+                        FieldInfo field = typeof(ErrorCodes).GetField(errorCode.ToString());
+                        DescriptionAttribute attribute = field?.GetCustomAttribute<DescriptionAttribute>();
+                        return attribute != null ? attribute.Description : errorCode.ToString();
+                    }
+                    return $"Unknown Error Code: {code}";
+                })
+                .ToList();
+
+            return string.Join(", ", descriptions);
+
         }
 
         private HttpRequestMessage CreatePostRequestAsync(string endpoint, string token, string encryptedPayload)
@@ -1310,9 +1340,6 @@ namespace EasyClaimsCore.API.Services
             NewHttpClientFactory.Instance.DefaultRequestHeaders.Clear();
         }
 
-
-
-
         //Helper models
         private class InputStructure
         {
@@ -1357,6 +1384,73 @@ namespace EasyClaimsCore.API.Services
 
             [JsonProperty("remarks")]
             public string Remarks { get; set; }
+        }
+        public enum ErrorCodes
+        {
+            [Description("Enter a valid diagnosis code from the ICD-10 library")] Error101 = 101,
+            [Description("Enter patient sex, either M or F")] Error102 = 102,
+            [Description("Enter patient date of birth (mm-dd-yyyy) format")] Error103 = 103,
+            [Description("Enter date of admission (mm-dd-yyyy) format")] Error104 = 104,
+            [Description("Enter time of admission (hh:mm) 24-hr format")] Error105 = 105,
+            [Description("Enter date of discharge (mm-dd-yyyy) format")] Error106 = 106,
+            [Description("Enter time of discharge (hh:mm) 24-hr format")] Error107 = 107,
+            [Description("Select the proper patient disposition")] Error108 = 108,
+            [Description("Input admission weight when the patient is less than 28 days old")] Error109 = 109,
+            [Description("Input time of birth when the patient is less than 28 days old")] Error110 = 110,
+            [Description("Primary diagnosis code must be in the list of ICD-10 codes provided")] Error201 = 201,
+            [Description("Secondary diagnosis code must be in the list of ICD-10 codes provided")] Error202 = 202,
+            [Description("RVS code must be in the list of RVS codes provided")] Error203 = 203,
+            [Description("Laterality must be in numerical value")] Error204 = 204,
+            [Description("Extension code 1 must be in numerical value")] Error205 = 205,
+            [Description("Extension code 1 is a single-digit number")] Error206 = 206,
+            [Description("Extension code 2 must be in numerical value")] Error207 = 207,
+            [Description("Extension code 2 is a single-digit number")] Error208 = 208,
+            [Description("Sex code must be M or F")] Error209 = 209,
+            [Description("Date of birth must not include non-numeric characters")] Error212 = 212,
+            [Description("Date of birth must be in mm-dd-yyyy format")] Error213 = 213,
+            [Description("Date of admission must be in mm-dd-yyyy format")] Error214 = 214,
+            [Description("Date of admission must not include non-numeric characters")] Error215 = 215,
+            [Description("Date of discharge must be in mm-dd-yyyy format")] Error216 = 216,
+            [Description("Date of discharge must not include non-numeric characters")] Error217 = 217,
+            [Description("Time of admission must not include non-numeric characters")] Error218 = 218,
+            [Description("Date of Birth must be equal or later than the admission information")] Error219 = 219,
+            [Description("Admission information must be equal or later than the discharge information")] Error220 = 220,
+            [Description("Discharge information must be equal or not later than the Admission Info")] Error221 = 221,
+            [Description("Claim number must exist in eClaims XML (pClaimNumber 'xml attribute')")] Error222 = 222,
+            [Description("Time of admission must be in hh:mm 24-hour format")] Error223 = 223,
+            [Description("Time of discharge must be in hh:mm 24-hour format")] Error224 = 224,
+            [Description("Time of discharge must not include non-numeric characters")] Error225 = 225,
+            [Description("Discharge code is not available from the list of discharge codes")] Error226 = 226,
+            [Description("Admission weight must be a numerical value")] Error227 = 227,
+            [Description("Admission weight must not be lower than 0.3 kg")] Error228 = 228,
+            [Description("The file must be in XML file format")] Error301 = 301,
+            [Description("Required element is missing, kindly refer to the DTD provided.")] Error302 = 302,
+            [Description("CF5 pHospitalCode Value must not be empty")] Error303 = 303,
+            [Description("Enter a valid diagnosis code from the ICD-10 library")] Error401 = 401,
+            [Description("Enter patient sex, either M or F")] Error402 = 402,
+            [Description("Enter patient date of birth (mm/dd/yyyy) format")] Error403 = 403,
+            [Description("Date of admission must not be empty")] Error404 = 404,
+            [Description("Time of admission must not be empty")] Error405 = 405,
+            [Description("Date of discharge must not be empty")] Error406 = 406,
+            [Description("Time of discharge must not be empty")] Error407 = 407,
+            [Description("Disposition type must not be empty")] Error408 = 408,
+            [Description("Input admission weight when the patient is less than 28 days old")] Error409 = 409,
+            [Description("Primary diagnosis code must be in the list of ICD-10 codes provided")] Error411 = 411,
+            [Description("Primary diagnosis must not be for External Causes of Morbidity and Mortality")] Error412 = 412,
+            [Description("Primary diagnosis must be appropriate for inpatients")] Error413 = 413,
+            [Description("Principal diagnosis must be appropriate for patient's age")] Error414 = 414,
+            [Description("Principal diagnosis must be appropriate for patient's sex")] Error415 = 415,
+            [Description("Age should not be less than 0 or more than 124 years")] Error416 = 416,
+            [Description("Length of stay should not be less than 0 days")] Error417 = 417,
+            [Description("Admission weight must be 0.3 kg and up")] Error418 = 418,
+            [Description("ICD-10 code will be removed from the grouping logic and will proceed in finding the DRG code.")] Error501 = 501,
+            [Description("RVS code will be removed from the grouping logic and will proceed in finding DRG code.")] Error506 = 506,
+            [Description("CF5 pHospitalCode Value must be found in eClaims XML or equal to pHospitalCode Value in eClaims.xml")] Error509 = 509,
+            [Description("CF5 ClaimNumber Value must not be empty")] Error511 = 511,
+            [Description("Admission Time Format must be hh:mm a (ex. 02:58 AM)")] Error515 = 515,
+            [Description("Discharge Time Format must be hh:mm a (ex. 02:58 AM)")] Error516 = 516,
+            [Description("Admission Date Format must be MM-dd-yyyy (ex. 01-01-2024)")] Error517 = 517,
+            [Description("Discharge Date Format must be MM-dd-yyyy (ex. 01-01-2024)")] Error518 = 518
         }
     }
 }

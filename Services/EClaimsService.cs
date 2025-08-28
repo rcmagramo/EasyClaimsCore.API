@@ -864,25 +864,25 @@ namespace EasyClaimsCore.API.Services
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var cipherKey = await GetCipherKeyAsync(request.pmcc);
 
+            ClearHeaders();
+            AddHeaders(new Dictionary<string, string> { { "token", token } });
+
             JObject jsonObj = JObject.Parse(JsonConvert.SerializeObject(new { Xml = request.Xml }));
             string xmlString = jsonObj["Xml"]?.ToString() ?? "";
+
+            XmlDocument xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(xmlString);
+
             var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(xmlString, cipherKey);
-
-            var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
-            httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("token", token);
-
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/validateeSOA";
-            var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
-            {
-                Content = new StringContent(encryptedPayload, Encoding.UTF8, "application/json")
-            };
-
-            var response = await httpClient.SendAsync(requestMessage);
+            var requestMessage = CreatePostRequestAsync(endpoint, token, encryptedPayload);
+            var response = await MakeSendRequestAsync(requestMessage);
 
             if (response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
+                var json = JObject.Parse(responseContent);
+
                 var data = JsonConvert.DeserializeObject<dynamic>(responseContent);
                 bool isSuccess = data?.success ?? false;
 
@@ -890,24 +890,20 @@ namespace EasyClaimsCore.API.Services
                 {
                     return new
                     {
-                        Message = "",
+                        Message = "eSOA validation successful.",
                         Result = true,
                         Success = true
                     };
                 }
-                //else
-                //{
-                //    var jsonData = _cryptoEngine.DecryptRestPayloadData(responseContent, _cipherKey);
-                //    var errorData = JsonConvert.DeserializeObject<Dictionary<string, List<string>>>(jsonData);
-
-                //    return new
-                //    {
-                //        Result = errorData != null && errorData.TryGetValue("errors", out List<string>? value) && value.Count > 0
-                //            ? string.Join("; ", value)
-                //            : true,
-                //        Success = false
-                //    };
-                //}
+                else 
+                {
+                    return new
+                    {
+                        Message = json["message"]?.ToString(),
+                        Result = (string)null,
+                        Success = false
+                    };
+                }
             }
 
             throw new ExternalApiException($"eSOA validation failed with status: {response.StatusCode}");

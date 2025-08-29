@@ -1082,19 +1082,22 @@ namespace EasyClaimsCore.API.Services
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var cipherKey = await GetCipherKeyAsync(request.pmcc);
 
+            ClearHeaders();
+            AddHeaders(new Dictionary<string, string> { { "token", token } });
+
             // Process CF5 XML
-            var jsonPayloadDataDRG1 = JsonConvert.SerializeObject(request.CF5Xml);
-            jsonPayloadDataDRG1 = jsonPayloadDataDRG1.Replace("\\\"", "\"").Replace("\\\\", "\\").Trim('"');
-            var rawClaims1 = CleanAndValidateXml(jsonPayloadDataDRG1);
-            var cleanedXml1 = Regex.Replace(rawClaims1, @"<\?xml.*?\?>\s*", "", RegexOptions.Singleline);
-            var cf5 = _cryptoEngine.EncryptXmlPayloadData(cleanedXml1, cipherKey);
+            //var jsonPayloadDataDRG1 = JsonConvert.SerializeObject(request.CF5Xml);
+            //jsonPayloadDataDRG1 = jsonPayloadDataDRG1.Replace("\\\"", "\"").Replace("\\\\", "\\").Trim('"');
+            // var rawClaims1 = CleanAndValidateXml(jsonPayloadDataDRG1);
+            //var cleanedXml1 = Regex.Replace(rawClaims1, @"<\?xml.*?\?>\s*", "", RegexOptions.Singleline);
+            var cf5 = _cryptoEngine.EncryptXmlPayloadData(request.CF5Xml, cipherKey);
 
             // Process eClaim XML
-            var jsonPayloadDataDRG2 = JsonConvert.SerializeObject(request.eClaimXml);
-            jsonPayloadDataDRG2 = jsonPayloadDataDRG2.Replace("\\\"", "\"").Replace("\\\\", "\\").Trim('"');
-            var rawClaims = CleanAndValidateXml(jsonPayloadDataDRG2);
-            var cleanedXml2 = Regex.Replace(rawClaims, @"<\?xml.*?\?>\s*", "", RegexOptions.Singleline);
-            var eclaims = _cryptoEngine.EncryptXmlPayloadData(cleanedXml2, cipherKey);
+            //var jsonPayloadDataDRG2 = JsonConvert.SerializeObject(request.eClaimXml);
+            //jsonPayloadDataDRG2 = jsonPayloadDataDRG2.Replace("\\\"", "\"").Replace("\\\\", "\\").Trim('"');
+            //var rawClaims = CleanAndValidateXml(jsonPayloadDataDRG2);
+            //var cleanedXml2 = Regex.Replace(rawClaims, @"<\?xml.*?\?>\s*", "", RegexOptions.Singleline);
+            var eclaims = _cryptoEngine.EncryptXmlPayloadData(request.eClaimXml, cipherKey);
 
             var payload = new { cf5, eclaims };
             var encryptedPayloadDRG = JsonConvert.SerializeObject(payload);
@@ -1111,12 +1114,15 @@ namespace EasyClaimsCore.API.Services
             httpClient.DefaultRequestHeaders.Add("token", token);
 
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/validateCF5";
-            var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
-            {
-                Content = new StringContent(cleanedJson, Encoding.UTF8, "application/json")
-            };
 
-            var response = await httpClient.SendAsync(requestMessage);
+            var requestMessage = CreatePostRequestAsync(endpoint, token, cleanedJson);
+            var response = await MakeSendRequestAsync(requestMessage);
+            //var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
+            //{
+            //    Content = new StringContent(cleanedJson, Encoding.UTF8, "application/json")
+            //};
+
+            //var response = await httpClient.SendAsync(requestMessage);
 
             if (response.IsSuccessStatusCode)
             {

@@ -991,29 +991,26 @@ namespace EasyClaimsCore.API.Services
                 referenceno = request.referenceNumber ?? ""
             };
 
+            var jsonRequest = JsonConvert.SerializeObject(requestData);
+
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var cipherKey = await GetCipherKeyAsync(request.pmcc);
 
-            var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
-            httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("token", token);
+            ClearHeaders();
+            AddHeaders(new Dictionary<string, string> { { "token", token } });
 
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/generatePBEFPDF";
-            var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
-            {
-                Content = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json")
-            };
-
-            var response = await httpClient.SendAsync(requestMessage);
-
+            var requestMessage = CreatePostRequestAsync(endpoint, token, jsonRequest);
+            var response = await MakeSendRequestAsync(requestMessage);
+            
             if (response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
-                var base64String = _cryptoEngine.DecryptRestPayloadData(responseContent, cipherKey).Trim();
+                var base64String = _cryptoEngine.DecryptRest2PayloadData(responseContent, cipherKey).Trim();
 
                 return new
                 {
-                    Message = "",
+                    Message = "Render the generated PDF using any base64 renderer",
                     Result = base64String,
                     Success = true
                 };
@@ -1513,7 +1510,6 @@ namespace EasyClaimsCore.API.Services
             [Description("Admission Date Format must be MM-dd-yyyy (ex. 01-01-2024)")] Error517 = 517,
             [Description("Discharge Date Format must be MM-dd-yyyy (ex. 01-01-2024)")] Error518 = 518
         }
-
         private class PXmlObject
         {
             public string docMimeType { get; set; }
@@ -1523,7 +1519,6 @@ namespace EasyClaimsCore.API.Services
             public string iv { get; set; }
             public string doc { get; set; }
         }
-
         private class OutputStructure
         {
             public string pSeriesLhioNo { get; set; }

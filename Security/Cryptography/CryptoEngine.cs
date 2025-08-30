@@ -113,6 +113,7 @@ namespace EasyClaimsCore.API.Security.Cryptography
                 throw new ApplicationException($"Cryptography exception occurred! {ex.Message}");
             }
         }
+        
         //public string DecryptXmlPayloadData(string encryptedContent, string cipherKey)
         //{
         //    try
@@ -201,7 +202,6 @@ namespace EasyClaimsCore.API.Security.Cryptography
             }
         }
 
-
         public string DecryptRestPayloadData(string encryptedContent, string cipherKey)
         {
             try
@@ -267,6 +267,46 @@ namespace EasyClaimsCore.API.Security.Cryptography
             {
                 // Keep outer exception handler
                 throw new ApplicationException($"Cryptography exception occurred! {ex.Message}", ex);
+            }
+        }
+
+        public string DecryptRest2PayloadData(string encryptedContent, string cipherKey)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(encryptedContent)) throw new Exception("XML payload cannot be null or empty string!");
+
+                //Log("Decryption process started.");
+                var xmlPayloadData = "";
+
+                //Log("Parsing encrypted content...");
+                var payload = JsonConvert.DeserializeObject<dynamic>(encryptedContent);
+
+                var newPayload = new
+                {
+                    payload.result.doc,
+                    payload.result.iv
+                };
+
+                //Log("Parsing .doc Payload from base-64...");
+                string _doc = newPayload.doc;
+                var decodedDoc = Convert.FromBase64String(_doc);
+
+                //Log("Parsing iv Payload from base-64...");
+                string _iv = newPayload.iv;
+                var iv = Convert.FromBase64String(_iv);
+
+                var password = GeneratePassword(cipherKey);
+
+                //Log("Decrypting XML Payload using 'AES-256-CBC'...");
+                xmlPayloadData = DecryptUsingAES(decodedDoc, password, iv);
+
+                //Log("Decryption process finished.");
+                return xmlPayloadData;
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"Cryptography exception occurred! {ex.Message}");
             }
         }
 
@@ -336,6 +376,7 @@ namespace EasyClaimsCore.API.Security.Cryptography
                 return memoryStream.ToArray();
             }
         }
+       
         //private byte[] EncryptUsingAES(byte[] data, byte[] password, byte[] iv)
         //{
         //    using var aes = Aes.Create();
@@ -355,7 +396,6 @@ namespace EasyClaimsCore.API.Security.Cryptography
 
         //    return memoryStream.ToArray();
         //}
-
 
         private string DecryptUsingAES(byte[] data, byte[] password, byte[] iv)
         {
@@ -381,6 +421,7 @@ namespace EasyClaimsCore.API.Security.Cryptography
                 }
             }
         }
+       
         //private string DecryptUsingAES(byte[] data, byte[] password, byte[] iv)
         //{
         //    using var aes = Aes.Create();
@@ -415,8 +456,7 @@ namespace EasyClaimsCore.API.Security.Cryptography
 
             return hex.ToString();
         }
-       
-        
+               
         //private string ComputeHashUsingSHA256(byte[] data)
         //{
         //    using var sha256 = SHA256.Create();

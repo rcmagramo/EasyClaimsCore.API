@@ -925,40 +925,40 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteAddRequiredDocumentAsync(RequiredApiDocumentRequest request)
         {
-            var requestBody = new
-            {
-                pSeriesLhioNo = request.SeriesLhioNo,
-                pXML = request.Xml
-            };
-
-            var sanitizedJson = SanitizeJson(JsonConvert.SerializeObject(requestBody));
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var cipherKey = await GetCipherKeyAsync(request.pmcc);
 
-            var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
-            httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("token", token);
+            var ecryptedData = _cryptoEngine.EncryptXmlPayloadData(request.Xml, cipherKey);
 
-            var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/addRequiredDocument";
-            var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
+            var requestBody = new
             {
-                Content = new StringContent(sanitizedJson, Encoding.UTF8, "application/json")
+                pSeriesLhioNo = request.SeriesLhioNo,
+                pXML = ecryptedData
             };
 
-            var response = await httpClient.SendAsync(requestMessage);
+            var jsonRequest = JsonConvert.SerializeObject(requestBody);
+
+            var sanitizedJson = SanitizeJson2(jsonRequest);
+
+            ClearHeaders();
+            AddHeaders(new Dictionary<string, string> { { "token", token } });
+
+            var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/addRequiredDocument";
+            var requestMessage = CreatePostRequestAsync(endpoint, token, sanitizedJson);
+            var response = await MakeSendRequestAsync(requestMessage);
 
             if (response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
-                var jsonData = _cryptoEngine.DecryptRestPayloadData(responseContent, cipherKey);
+                var jsonData = _cryptoEngine.DecryptRest2PayloadData(responseContent, cipherKey);
 
                 if (jsonData.Contains("Claim has been refiled"))
                 {
                     return new
                     {
-                        Message = "Successfully Refiled.",
-                        Result = "Successfully Refiled.",
-                        Success = true
+                        Message = "Claim has been refiled",
+                        Result = false,
+                        Success = false
                     };
                 }
                 else if (jsonData.Contains("PhilhealthException"))
@@ -966,21 +966,20 @@ namespace EasyClaimsCore.API.Services
                     return new
                     {
                         Message = jsonData.Trim(),
-                        Result = jsonData.Trim(),
-                        Success = true
+                        Result = false,
+                        Success = false
                     };
                 }
                 else
                 {
                     return new
                     {
-                        Message = "",
-                        Result = jsonData,
+                        Message = "Required document added successfully.",
+                        Result = true,
                         Success = true
                     };
                 }
             }
-
             throw new ExternalApiException($"Add required document failed with status: {response.StatusCode}");
         }
 
@@ -1193,8 +1192,6 @@ namespace EasyClaimsCore.API.Services
                 Result = cleanedXml,
                 Success = true
             };
-
-
         }
 
         // Helper methods
@@ -1229,6 +1226,85 @@ namespace EasyClaimsCore.API.Services
             catch (Exception)
             {
                 return inputJson;
+            }
+        }
+
+        public static string SanitizeJson2(string inputJson)
+        {
+            if (string.IsNullOrWhiteSpace(inputJson))
+            {
+                // Or throw an ArgumentException, depending on desired behavior
+                return null;
+            }
+
+            try
+            {
+                // 1. Deserialize the input JSON string into the InputStructure
+                // Uses JsonConvert.DeserializeObject from Newtonsoft.Json
+                var inputData = JsonConvert.DeserializeObject<InputStructure>(inputJson);
+
+                PXmlObject pXmlData = null; // Initialize pXmlData
+
+                // Check if input deserialization worked and pXML string is present
+                if (inputData != null && !string.IsNullOrWhiteSpace(inputData.pXML))
+                {
+                    try
+                    {
+                        // 2. Deserialize the pXML string *itself* into the PXmlObject
+                        // Uses JsonConvert.DeserializeObject again for the inner JSON
+                        pXmlData = JsonConvert.DeserializeObject<PXmlObject>(inputData.pXML);
+                    }
+                    catch (Newtonsoft.Json.JsonException innerEx)
+                    {
+                        // Handle cases where the inner pXML string is not valid JSON
+                        Console.Error.WriteLine($"Error deserializing inner pXML JSON: {innerEx.Message}");
+                        // Decide recovery strategy: Use default or fail? Let's use default for now.
+                        pXmlData = null; // Ensure it's null if parsing failed
+                    }
+                }
+
+                // If pXmlData is still null (either inputData was null, pXML was empty, or inner parsing failed),
+                // create a default empty object.
+                if (pXmlData == null)
+                {
+                    pXmlData = new PXmlObject
+                    {
+                        docMimeType = "",
+                        hash = "",
+                        key1 = "",
+                        key2 = "",
+                        iv = "",
+                        doc = ""
+                    };
+                }
+
+                // 3. Create the final OutputStructure object
+                var outputData = new OutputStructure
+                {
+                    // Use null-conditional operator for safety if inputData could be null
+                    pSeriesLhioNo = inputData?.pSeriesLhioNo ?? "",
+                    pXML = pXmlData // Assign the deserialized (or default) object here
+                };
+
+                // 4. Serialize the final object back into a JSON string (pretty printed)
+                // Uses JsonConvert.SerializeObject with Formatting.Indented
+                string sanitizedJson = JsonConvert.SerializeObject(outputData, Newtonsoft.Json.Formatting.Indented);
+
+                return sanitizedJson;
+            }
+            // Catch Newtonsoft.Json specific exception
+            catch (Newtonsoft.Json.JsonException jsonEx)
+            {
+                // Handle JSON parsing errors (for the outer JSON)
+                Console.Error.WriteLine($"Error deserializing outer JSON: {jsonEx.Message}");
+                // Depending on requirements, you might return null, throw, or return a default JSON
+                return null;
+            }
+            catch (Exception ex)
+            {
+                // Handle other unexpected errors
+                Console.Error.WriteLine($"An unexpected error occurred: {ex.Message}");
+                return null;
             }
         }
 
@@ -1436,6 +1512,22 @@ namespace EasyClaimsCore.API.Services
             [Description("Discharge Time Format must be hh:mm a (ex. 02:58 AM)")] Error516 = 516,
             [Description("Admission Date Format must be MM-dd-yyyy (ex. 01-01-2024)")] Error517 = 517,
             [Description("Discharge Date Format must be MM-dd-yyyy (ex. 01-01-2024)")] Error518 = 518
+        }
+
+        private class PXmlObject
+        {
+            public string docMimeType { get; set; }
+            public string hash { get; set; }
+            public string key1 { get; set; }
+            public string key2 { get; set; }
+            public string iv { get; set; }
+            public string doc { get; set; }
+        }
+
+        private class OutputStructure
+        {
+            public string pSeriesLhioNo { get; set; }
+            public PXmlObject pXML { get; set; } // pXML is an object here
         }
     }
 }

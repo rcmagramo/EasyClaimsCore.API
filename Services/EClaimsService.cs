@@ -5,6 +5,7 @@ using EasyClaimsCore.API.Models.Exceptions;
 using EasyClaimsCore.API.Models.Requests;
 using EasyClaimsCore.API.Models.Responses;
 using EasyClaimsCore.API.Security.Cryptography;
+using EasyClaimsCore.API.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -19,6 +20,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Xml;
+using System.Xml.Serialization;
 using Formatting = Newtonsoft.Json.Formatting;
 using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
@@ -35,6 +37,7 @@ namespace EasyClaimsCore.API.Services
         private readonly ILogger<EClaimsService> _logger;
         private readonly string _restBaseUrl;
         private readonly string _euroCertificate;
+        private readonly ISerializerEngine _serializerEngine;
 
         public EClaimsService(
             IServiceExecutor serviceExecutor,
@@ -43,7 +46,8 @@ namespace EasyClaimsCore.API.Services
             ITokenHandler tokenHandler,
             ICipherKeyService cipherKeyService,
             IConfiguration configuration,
-            ILogger<EClaimsService> logger)
+            ILogger<EClaimsService> logger,
+            ISerializerEngine serializerEngine)
         {
             _serviceExecutor = serviceExecutor;
             _httpClientFactory = httpClientFactory;
@@ -52,6 +56,7 @@ namespace EasyClaimsCore.API.Services
             _cipherKeyService = cipherKeyService; // Assign new service
             _configuration = configuration;
             _logger = logger;
+            _serializerEngine = serializerEngine;
             _restBaseUrl = _configuration["PhilHealth:RestBaseUrl"] ?? "https://staging.philhealth.gov.ph/";
             _euroCertificate = _configuration["PhilHealth:EuroCertificate"] ?? "CLAIMS-01-05-2025-00006";
         }
@@ -1002,7 +1007,7 @@ namespace EasyClaimsCore.API.Services
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/generatePBEFPDF";
             var requestMessage = CreatePostRequestAsync(endpoint, token, jsonRequest);
             var response = await MakeSendRequestAsync(requestMessage);
-            
+
             if (response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
@@ -1065,7 +1070,6 @@ namespace EasyClaimsCore.API.Services
                     Success = true
                 };
             }
-
             throw new ExternalApiException($"eClaims upload failed with status: {response.StatusCode}");
         }
 
@@ -1399,6 +1403,37 @@ namespace EasyClaimsCore.API.Services
         {
             public string pSeriesLhioNo { get; set; } = string.Empty;
             public string pXML { get; set; } = string.Empty;
+        }
+        [XmlRoot("eRECEIPT")]
+        public class eReceipt
+        {
+            [XmlAttribute("pTransmissionControlNumber")]
+            [JsonProperty("pTransmissionControlNumber")]
+            public string TransmissionControlNumber { get; set; }
+
+            [XmlAttribute("pHospitalTransmittalNo")]
+            [JsonProperty("pHospitalTransmittalNo")]
+            public string HospitalTransmittalNo { get; set; }
+
+            [XmlAttribute("pTotalClaims")]
+            [JsonProperty("pTotalClaims")]
+            public string TotalClaims { get; set; }
+
+            [XmlAttribute("pTransmissionDate")]
+            [JsonProperty("pTransmissionDate")]
+            public string TransmissionDate { get; set; }
+
+            [XmlAttribute("pTransmissionTime")]
+            [JsonProperty("pTransmissionTime")]
+            public string TransmissionTime { get; set; }
+
+            [XmlAttribute("pHospitalCode")]
+            [JsonProperty("pHospitalCode")]
+            public string HospitalCode { get; set; }
+
+            [XmlAttribute("pReceiptTicketNumber")]
+            [JsonProperty("pReceiptTicketNumber")]
+            public string ReceiptTicketNumber { get; set; }
         }
         private class DRGApiResponse
         {

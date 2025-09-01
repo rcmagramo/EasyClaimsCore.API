@@ -1,7 +1,9 @@
-﻿using System.Text;
+﻿using Newtonsoft.Json;
+using System.Text;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Serialization;
+using Formatting = Newtonsoft.Json.Formatting;
 
 namespace EasyClaimsCore.API.Serialization
 {
@@ -100,6 +102,16 @@ namespace EasyClaimsCore.API.Serialization
                 Message = ex.Message;
                 _logger.LogError(ex, "Error occurred during XML formatting");
                 return xml;
+            }
+        }
+
+        public string ConvertXmlToJson<T>(string xml, string rootElement)
+        {
+            XmlSerializer serializer = new XmlSerializer(typeof(T), new XmlRootAttribute(rootElement));
+            using (StringReader reader = new StringReader(xml))
+            {
+                var obj = (T)serializer.Deserialize(reader);
+                return JsonConvert.SerializeObject(obj, Formatting.Indented);
             }
         }
     }

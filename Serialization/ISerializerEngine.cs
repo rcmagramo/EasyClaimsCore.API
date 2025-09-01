@@ -7,5 +7,7 @@
         string FormatXml(string xml);
         bool Success { get; }
         string Message { get; }
+
+        string ConvertXmlToJson<T>(string xml, string rootElement);
     }
 }

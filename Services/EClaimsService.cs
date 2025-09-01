@@ -1041,21 +1041,17 @@ namespace EasyClaimsCore.API.Services
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var cipherKey = await GetCipherKeyAsync(request.pmcc);
 
+            ClearHeaders();
+            AddHeaders(new Dictionary<string, string> { { "token", token } });
+
             JObject jsonObj = JObject.Parse(JsonConvert.SerializeObject(new { Xml = request.Xml }));
             string xmlString = jsonObj["Xml"]?.ToString() ?? "";
             var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(xmlString, cipherKey);
 
-            var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
-            httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("token", token);
-
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/uploadeClaims";
-            var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
-            {
-                Content = new StringContent(encryptedPayload, Encoding.UTF8, "application/json")
-            };
 
-            var response = await httpClient.SendAsync(requestMessage);
+            var requestMessage = CreatePostRequestAsync(endpoint, token, encryptedPayload);
+            var response = await MakeSendRequestAsync(requestMessage);
 
             if (response.IsSuccessStatusCode)
             {

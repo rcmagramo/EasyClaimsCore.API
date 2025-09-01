@@ -20,6 +20,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Xml;
+using System.Xml.Linq;
 using System.Xml.Serialization;
 using Formatting = Newtonsoft.Json.Formatting;
 using JsonSerializer = Newtonsoft.Json.JsonSerializer;
@@ -1045,13 +1046,29 @@ namespace EasyClaimsCore.API.Services
 
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            var _certificate = _configuration.GetValue<string>("PhilHealth:EuroCertificate");
 
             ClearHeaders();
             AddHeaders(new Dictionary<string, string> { { "token", token } });
 
             JObject jsonObj = JObject.Parse(JsonConvert.SerializeObject(new { Xml = request.Xml }));
             string xmlString = jsonObj["Xml"]?.ToString() ?? "";
-            var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(xmlString, cipherKey);
+
+            // Load XML
+            var xdoc = XDocument.Parse(xmlString);
+
+            // Find the root element <eCLAIMS>
+            var eclaims = xdoc.Root;
+            if (eclaims != null && eclaims.Attribute("pUserName") != null)
+            {
+                eclaims.SetAttributeValue("pUserName", ":"+_certificate);
+            }
+
+            // Get updated XML string
+            string updatedXml = xdoc.ToString(SaveOptions.DisableFormatting);
+
+
+            var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(updatedXml, cipherKey);
 
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/uploadeClaims";
 

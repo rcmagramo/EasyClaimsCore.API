@@ -516,7 +516,7 @@ namespace EasyClaimsCore.API.Services
 
                 var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
                 var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
-               
+
                 var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(
                     JsonConvert.SerializeObject(doctorPAN), cipherKey);
 
@@ -570,11 +570,11 @@ namespace EasyClaimsCore.API.Services
 
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
-            
+
             var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
             httpClient.DefaultRequestHeaders.Clear();
             httpClient.DefaultRequestHeaders.Add("token", token);
-           
+
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/isDoctorAccredited";
             var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
             {
@@ -855,12 +855,13 @@ namespace EasyClaimsCore.API.Services
             // Find the root element <eCLAIMS>
             var eclaims = xdoc.Root;
             eclaims.SetAttributeValue("pUserName", ":" + _certificate);
-            eclaims.SetAttributeValue("pHospitalCode", hospitalCode);
+            eclaims.SetAttributeValue("pHospitalCode", hospitalCode); 
+            eclaims.SetAttributeValue("pServiceProvider", "EUROLINK");
 
             // Get updated XML string
             string updatedXml = xdoc.ToString(SaveOptions.DisableFormatting);
 
-           
+
             var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(updatedXml, cipherKey);
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/eClaimsFileCheck";
             var requestMessage = CreatePostRequestAsync(endpoint, token, encryptedPayload);
@@ -918,10 +919,10 @@ namespace EasyClaimsCore.API.Services
             // Find the root element 
             var eclaims = xdoc.Root;
             eclaims.SetAttributeValue("pHciTransmittalId", ":" + _certificate);
-            
+
             // Get updated XML string
             string updatedXml = xdoc.ToString(SaveOptions.DisableFormatting);
-           
+
 
             var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(updatedXml, cipherKey);
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/validateeSOA";
@@ -1090,10 +1091,10 @@ namespace EasyClaimsCore.API.Services
 
             // Find the root element <eCLAIMS>
             var eclaims = xdoc.Root;
-            if (eclaims != null && eclaims.Attribute("pUserName") != null)
-            {
-                eclaims.SetAttributeValue("pUserName", ":" + _certificate);
-            }
+
+            eclaims.SetAttributeValue("pUserName", ":" + _certificate);
+            eclaims.SetAttributeValue("pHospitalCode", hospitalCode); 
+            eclaims.SetAttributeValue("pServiceProvider", "EUROLINK");
 
             // Get updated XML string
             string updatedXml = xdoc.ToString(SaveOptions.DisableFormatting);
@@ -1124,7 +1125,7 @@ namespace EasyClaimsCore.API.Services
             var _certificate = _configuration.GetValue<string>("PhilHealth:EuroCertificate");
 
             //CF5Xml
-            JObject jsonObjCF5Xml = JObject.Parse(JsonConvert.SerializeObject(new { Xml = request.CF5Xml}));
+            JObject jsonObjCF5Xml = JObject.Parse(JsonConvert.SerializeObject(new { Xml = request.CF5Xml }));
             string xmlStringCF5Xml = jsonObjCF5Xml["Xml"]?.ToString() ?? "";
             var xdocCF5Xml = XDocument.Parse(xmlStringCF5Xml);
             var eclaimsCF5Xml = xdocCF5Xml.Root;
@@ -1217,7 +1218,6 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteMockDecryptResponseAsync(MockDecryptedRequest request)
         {
-            // var cipherKey = await GetCipherKeyAsync(request.pmcc);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
             var Newrequest = new

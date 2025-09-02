@@ -346,7 +346,6 @@ namespace EasyClaimsCore.API.Services
         private async Task<object> ExecuteCaseRateSearchAsync(CaseRateRestRequest request)
         {
             var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            //var cipherKey = await GetCipherKeyAsync(request.pmcc); // Get cipher key from database
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
             var payload = new
@@ -439,7 +438,6 @@ namespace EasyClaimsCore.API.Services
             ClearHeaders();
             AddHeaders(new Dictionary<string, string> { { "token", newtoken } });
             var url = $"{_restBaseUrl}PHIC/Claims3.0/getServerDateTime";
-            //var response = await httpClient.GetAsync(url);
             var response = await MakeGetRequestAsync(url);
 
             if (response.IsSuccessStatusCode)
@@ -517,8 +515,8 @@ namespace EasyClaimsCore.API.Services
                 };
 
                 var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-                //var cipherKey = await GetCipherKeyAsync(request.pmcc);
                 var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
+               
                 var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(
                     JsonConvert.SerializeObject(doctorPAN), cipherKey);
 
@@ -571,11 +569,12 @@ namespace EasyClaimsCore.API.Services
             };
 
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            //var cipherKey = await GetCipherKeyAsync(request.pmcc);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
+            
             var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
             httpClient.DefaultRequestHeaders.Clear();
             httpClient.DefaultRequestHeaders.Add("token", token);
+           
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/isDoctorAccredited";
             var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
             {
@@ -681,16 +680,11 @@ namespace EasyClaimsCore.API.Services
         private async Task<object> ExecuteUploadedClaimsMapAsync(UploadedClaimsMapRestRequest request)
         {
             var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            //var cipherKey = await GetCipherKeyAsync(request.pmcc);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
-
             ClearHeaders();
             AddHeaders(new Dictionary<string, string> { { "token", newtoken } });
-
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/getUploadedClaimsMap?receiptTicketNumber={request.receiptTicketNumber}";
-
             var response = await MakeGetRequestAsync(endpoint);
-
             if (response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
@@ -705,7 +699,6 @@ namespace EasyClaimsCore.API.Services
                     Result = dto,
                     Success = true
                 };
-
             }
             throw new ExternalApiException($"Uploaded claims map request failed with status: {response.StatusCode}");
         }
@@ -713,7 +706,6 @@ namespace EasyClaimsCore.API.Services
         private async Task<object> ExecuteClaimStatusAsync(ClaimStatusApiRequest request)
         {
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            //var cipherKey = await GetCipherKeyAsync(request.pmcc);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
             ClearHeaders();
@@ -805,7 +797,6 @@ namespace EasyClaimsCore.API.Services
         private async Task<object> ExecuteVoucherDetailsAsync(VoucherRestRequest request)
         {
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            //var cipherKey = await GetCipherKeyAsync(request.pmcc);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
             ClearHeaders();

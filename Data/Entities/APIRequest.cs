@@ -7,6 +7,8 @@
         public string MethodName { get; set; } = string.Empty;
         public bool IsActive { get; set; } = true;
         public string CipherKey { get; set; } = string.Empty; // New property
+        public string HospitalCode { get; set; } = string.Empty; // New property
+
 
         // Navigation property
         public ICollection<APIRequestLog> APIRequestLogs { get; set; } = new List<APIRequestLog>();

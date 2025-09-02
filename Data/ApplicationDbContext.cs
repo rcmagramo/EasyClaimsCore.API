@@ -38,10 +38,12 @@ namespace EasyClaimsCore.API.Data
                 entity.Property(e => e.MethodName).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.HospitalId).IsRequired();
                 entity.Property(e => e.CipherKey).IsRequired().HasMaxLength(255); // Configure CipherKey
+                entity.Property(e => e.HospitalCode).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.IsActive).HasDefaultValue(true);
 
                 entity.HasIndex(e => new { e.HospitalId, e.MethodName }).IsUnique();
                 entity.HasIndex(e => e.HospitalId); // Add index for CipherKey lookups
+                entity.HasIndex(e => e.HospitalCode); // Add index for HospitalCode lookups
             });
 
             // Seed data for APIRequests
@@ -50,12 +52,12 @@ namespace EasyClaimsCore.API.Data
 
         private static void SeedAPIRequests(ModelBuilder modelBuilder)
         {
-            // Sample cipher keys for different hospitals
-            var hospitalCipherKeys = new Dictionary<string, string>
+            // Sample cipher keys and hospital codes for different hospitals
+            var hospitalData = new Dictionary<string, (string CipherKey, string HospitalCode)>
             {
-                { "H92006568", "PHilheaLthDuMmy311630" }, // Default hospital - staging key
-                { "H12345678", "YourActualCipherKey123" }, // Another hospital
-                { "H87654321", "AnotherHospitalKey456" },  // Another hospital
+                { "H92006568", ("PHilheaLthDuMmy311630", "311630") }, // Default hospital - staging
+                { "H12345678", ("YourActualCipherKey123", "311630") }, // Another hospital
+                { "H87654321", ("AnotherHospitalKey456", "311630") },  // Another hospital
                 // Add more hospitals as needed
             };
 
@@ -63,10 +65,10 @@ namespace EasyClaimsCore.API.Data
             int currentId = 1;
 
             // Create API requests for each hospital
-            foreach (var hospitalKvp in hospitalCipherKeys)
+            foreach (var hospitalKvp in hospitalData)
             {
                 var hospitalId = hospitalKvp.Key;
-                var hospitalCipherKey = hospitalKvp.Value;
+                var (cipherKey, hospitalCode) = hospitalKvp.Value;
 
                 var hospitalRequests = Enum.GetValues<RequestName>()
                     .Select(requestName => new APIRequest
@@ -74,7 +76,8 @@ namespace EasyClaimsCore.API.Data
                         Id = currentId++, // Sequential unique ID
                         HospitalId = hospitalId,
                         MethodName = requestName.ToString(),
-                        CipherKey = hospitalCipherKey,
+                        CipherKey = cipherKey,
+                        HospitalCode = hospitalCode, // Set HospitalCode
                         IsActive = true
                     })
                     .ToArray();

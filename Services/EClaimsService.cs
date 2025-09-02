@@ -6,6 +6,7 @@ using EasyClaimsCore.API.Models.Requests;
 using EasyClaimsCore.API.Models.Responses;
 using EasyClaimsCore.API.Security.Cryptography;
 using EasyClaimsCore.API.Serialization;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -22,6 +23,7 @@ using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Serialization;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 using Formatting = Newtonsoft.Json.Formatting;
 using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
@@ -34,6 +36,7 @@ namespace EasyClaimsCore.API.Services
         private readonly ICryptoEngine _cryptoEngine;
         private readonly ITokenHandler _tokenHandler;
         private readonly ICipherKeyService _cipherKeyService;
+        private readonly IHospitalService _hospitalService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<EClaimsService> _logger;
         private readonly string _restBaseUrl;
@@ -46,6 +49,7 @@ namespace EasyClaimsCore.API.Services
             ICryptoEngine cryptoEngine,
             ITokenHandler tokenHandler,
             ICipherKeyService cipherKeyService,
+            IHospitalService hospitalService,
             IConfiguration configuration,
             ILogger<EClaimsService> logger,
             ISerializerEngine serializerEngine)
@@ -55,6 +59,7 @@ namespace EasyClaimsCore.API.Services
             _cryptoEngine = cryptoEngine;
             _tokenHandler = tokenHandler;
             _cipherKeyService = cipherKeyService; // Assign new service
+            _hospitalService = hospitalService;
             _configuration = configuration;
             _logger = logger;
             _serializerEngine = serializerEngine;
@@ -62,11 +67,28 @@ namespace EasyClaimsCore.API.Services
             _euroCertificate = _configuration["PhilHealth:EuroCertificate"] ?? "CLAIMS-01-05-2025-00006";
         }
 
+        // Updated method to get both cipher key and hospital code
+        private async Task<(string HospitalCode, string CipherKey)> GetHospitalCredentialsAsync(string hospitalId)
+        {
+            try
+            {
+                return await _hospitalService.GetHospitalCredentialsAsync(hospitalId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get hospital credentials for hospital {HospitalId}, using fallback", hospitalId);
+                // Fallback to configuration if service fails
+                var fallbackCode = _configuration["PhilHealth:DefaultHospitalCode"] ?? "311630";
+                var fallbackKey = _configuration["PhilHealth:CipherKey"] ?? "PHilheaLthDuMmy311630";
+                return (fallbackCode, fallbackKey);
+            }
+        }
+
         private async Task<string> GetCipherKeyAsync(string hospitalId)
         {
             try
             {
-                return await _cipherKeyService.GetCipherKeyAsync(hospitalId);
+                return await _hospitalService.GetCipherKeyAsync(hospitalId);
             }
             catch (Exception ex)
             {
@@ -279,7 +301,9 @@ namespace EasyClaimsCore.API.Services
             };
 
             var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            var cipherKey = await GetCipherKeyAsync(request.pmcc); // Get cipher key from database
+            //var cipherKey = await GetCipherKeyAsync(request.pmcc); // Get cipher key from database
+            var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
+
             var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(JsonConvert.SerializeObject(memberPin), cipherKey);
             ClearHeaders();
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/getMemberPIN";
@@ -314,15 +338,6 @@ namespace EasyClaimsCore.API.Services
                         Success = true
                     };
                 }
-                //var jsonData = _cryptoEngine.DecryptRestPayloadData(responseContent, cipherKey);
-                //XmlDocument xmlDoc = JsonConvert.DeserializeXmlNode(jsonData);
-
-                //return new
-                //{
-                //    Message = "Member PIN has been successfully retrieved.",
-                //    Result = xmlDoc?.InnerText,
-                //    Success = true
-                //};
             }
 
             throw new ExternalApiException($"Member PIN request failed with status: {response.StatusCode}");
@@ -331,7 +346,8 @@ namespace EasyClaimsCore.API.Services
         private async Task<object> ExecuteCaseRateSearchAsync(CaseRateRestRequest request)
         {
             var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            var cipherKey = await GetCipherKeyAsync(request.pmcc); // Get cipher key from database
+            //var cipherKey = await GetCipherKeyAsync(request.pmcc); // Get cipher key from database
+            var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
             var payload = new
             {
@@ -501,7 +517,8 @@ namespace EasyClaimsCore.API.Services
                 };
 
                 var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-                var cipherKey = await GetCipherKeyAsync(request.pmcc);
+                //var cipherKey = await GetCipherKeyAsync(request.pmcc);
+                var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
                 var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(
                     JsonConvert.SerializeObject(doctorPAN), cipherKey);
 
@@ -554,8 +571,8 @@ namespace EasyClaimsCore.API.Services
             };
 
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            var cipherKey = await GetCipherKeyAsync(request.pmcc);
-
+            //var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
             var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
             httpClient.DefaultRequestHeaders.Clear();
             httpClient.DefaultRequestHeaders.Add("token", token);
@@ -618,8 +635,8 @@ namespace EasyClaimsCore.API.Services
             };
 
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            var cipherKey = await GetCipherKeyAsync(request.pmcc);
-
+            //var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
             var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
             httpClient.DefaultRequestHeaders.Clear();
             httpClient.DefaultRequestHeaders.Add("token", token);
@@ -664,7 +681,8 @@ namespace EasyClaimsCore.API.Services
         private async Task<object> ExecuteUploadedClaimsMapAsync(UploadedClaimsMapRestRequest request)
         {
             var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            //var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
             ClearHeaders();
             AddHeaders(new Dictionary<string, string> { { "token", newtoken } });
@@ -695,7 +713,8 @@ namespace EasyClaimsCore.API.Services
         private async Task<object> ExecuteClaimStatusAsync(ClaimStatusApiRequest request)
         {
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            //var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
             ClearHeaders();
             AddHeaders(new Dictionary<string, string> { { "token", token } });
@@ -736,9 +755,13 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteEligibilityCheckAsync(EligibilityRequestViewModel request)
         {
+            var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            //var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
+
             var _eligibility = new EligibilityRequestVM
             {
-                hospitalCode = request.hospitalCode ?? "",
+                hospitalCode = request.pmcc ?? "",
                 isForOPDHemodialysisClaim = request.isForOPDHemodialysisClaim ?? "",
                 memberPIN = request.memberPIN ?? "",
                 memberBasicInformation = request.memberBasicInformation,
@@ -751,9 +774,6 @@ namespace EasyClaimsCore.API.Services
                 employerName = request.employerName ?? "",
                 isFinal = request.isFinal ?? ""
             };
-
-            var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            var cipherKey = await GetCipherKeyAsync(request.pmcc);
 
             string jsonPayloadDataCE = JsonConvert.SerializeObject(_eligibility);
             var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(jsonPayloadDataCE, cipherKey);
@@ -785,7 +805,8 @@ namespace EasyClaimsCore.API.Services
         private async Task<object> ExecuteVoucherDetailsAsync(VoucherRestRequest request)
         {
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            //var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
             ClearHeaders();
             AddHeaders(new Dictionary<string, string> { { "token", token } });
@@ -828,7 +849,8 @@ namespace EasyClaimsCore.API.Services
         private async Task<object> ExecuteEClaimsFileCheckAsync(CommonAPIRequest request)
         {
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
+            var _certificate = _configuration.GetValue<string>("PhilHealth:EuroCertificate");
 
             ClearHeaders();
             AddHeaders(new Dictionary<string, string> { { "token", token } });
@@ -836,11 +858,19 @@ namespace EasyClaimsCore.API.Services
             JObject jsonObj = JObject.Parse(JsonConvert.SerializeObject(new { Xml = request.Xml }));
             string xmlString = jsonObj["Xml"]?.ToString() ?? "";
 
-            // Load into XmlDocument to validate formatting
-            XmlDocument xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(xmlString);
+            // Load XML
+            var xdoc = XDocument.Parse(xmlString);
 
-            var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(xmlString, cipherKey);
+            // Find the root element <eCLAIMS>
+            var eclaims = xdoc.Root;
+            eclaims.SetAttributeValue("pUserName", ":" + _certificate);
+            eclaims.SetAttributeValue("pHospitalCode", hospitalCode);
+
+            // Get updated XML string
+            string updatedXml = xdoc.ToString(SaveOptions.DisableFormatting);
+
+           
+            var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(updatedXml, cipherKey);
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/eClaimsFileCheck";
             var requestMessage = CreatePostRequestAsync(endpoint, token, encryptedPayload);
             var response = await MakeSendRequestAsync(requestMessage);
@@ -882,7 +912,8 @@ namespace EasyClaimsCore.API.Services
         private async Task<object> ExecuteESOAValidationAsync(CommonAPIRequest request)
         {
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
+            var _certificate = _configuration.GetValue<string>("PhilHealth:EuroCertificate");
 
             ClearHeaders();
             AddHeaders(new Dictionary<string, string> { { "token", token } });
@@ -890,10 +921,18 @@ namespace EasyClaimsCore.API.Services
             JObject jsonObj = JObject.Parse(JsonConvert.SerializeObject(new { Xml = request.Xml }));
             string xmlString = jsonObj["Xml"]?.ToString() ?? "";
 
-            XmlDocument xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(xmlString);
+            // Load XML
+            var xdoc = XDocument.Parse(xmlString);
 
-            var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(xmlString, cipherKey);
+            // Find the root element 
+            var eclaims = xdoc.Root;
+            eclaims.SetAttributeValue("pHciTransmittalId", ":" + _certificate);
+            
+            // Get updated XML string
+            string updatedXml = xdoc.ToString(SaveOptions.DisableFormatting);
+           
+
+            var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(updatedXml, cipherKey);
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/validateeSOA";
             var requestMessage = CreatePostRequestAsync(endpoint, token, encryptedPayload);
             var response = await MakeSendRequestAsync(requestMessage);
@@ -932,7 +971,8 @@ namespace EasyClaimsCore.API.Services
         private async Task<object> ExecuteAddRequiredDocumentAsync(RequiredApiDocumentRequest request)
         {
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            //var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
             var ecryptedData = _cryptoEngine.EncryptXmlPayloadData(request.Xml, cipherKey);
 
@@ -1000,7 +1040,8 @@ namespace EasyClaimsCore.API.Services
             var jsonRequest = JsonConvert.SerializeObject(requestData);
 
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            //var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
             ClearHeaders();
             AddHeaders(new Dictionary<string, string> { { "token", token } });
@@ -1045,7 +1086,7 @@ namespace EasyClaimsCore.API.Services
             }
 
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
             var _certificate = _configuration.GetValue<string>("PhilHealth:EuroCertificate");
 
             ClearHeaders();
@@ -1061,17 +1102,13 @@ namespace EasyClaimsCore.API.Services
             var eclaims = xdoc.Root;
             if (eclaims != null && eclaims.Attribute("pUserName") != null)
             {
-                eclaims.SetAttributeValue("pUserName", ":"+_certificate);
+                eclaims.SetAttributeValue("pUserName", ":" + _certificate);
             }
 
             // Get updated XML string
             string updatedXml = xdoc.ToString(SaveOptions.DisableFormatting);
-
-
             var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(updatedXml, cipherKey);
-
             var endpoint = $"{_restBaseUrl}PHIC/Claims3.0/uploadeClaims";
-
             var requestMessage = CreatePostRequestAsync(endpoint, token, encryptedPayload);
             var response = await MakeSendRequestAsync(requestMessage);
 
@@ -1093,13 +1130,31 @@ namespace EasyClaimsCore.API.Services
         private async Task<object> ExecuteDRGValidationAsync(DRGRequest request)
         {
             var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
-            var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
+            var _certificate = _configuration.GetValue<string>("PhilHealth:EuroCertificate");
+
+            //CF5Xml
+            JObject jsonObjCF5Xml = JObject.Parse(JsonConvert.SerializeObject(new { Xml = request.CF5Xml}));
+            string xmlStringCF5Xml = jsonObjCF5Xml["Xml"]?.ToString() ?? "";
+            var xdocCF5Xml = XDocument.Parse(xmlStringCF5Xml);
+            var eclaimsCF5Xml = xdocCF5Xml.Root;
+            eclaimsCF5Xml.SetAttributeValue("pHospitalCode", hospitalCode);
+            string updatedCF5Xml = xdocCF5Xml.ToString(SaveOptions.DisableFormatting);
+
+            //eClaimXml
+            JObject jsonObjEClaimXml = JObject.Parse(JsonConvert.SerializeObject(new { Xml = request.eClaimXml }));
+            string xmlStringEClaimXml = jsonObjEClaimXml["Xml"]?.ToString() ?? "";
+            var xdocEClaimXml = XDocument.Parse(xmlStringEClaimXml);
+            var eclaimsEClaimXml = xdocEClaimXml.Root;
+            eclaimsEClaimXml.SetAttributeValue("pUserName", _certificate);
+            eclaimsEClaimXml.SetAttributeValue("pHospitalCode", hospitalCode);
+            string updatedEClaimXml = xdocEClaimXml.ToString(SaveOptions.DisableFormatting);
 
             ClearHeaders();
             AddHeaders(new Dictionary<string, string> { { "token", token } });
 
-            var cf5 = _cryptoEngine.EncryptXmlPayloadData(request.CF5Xml, cipherKey);
-            var eclaims = _cryptoEngine.EncryptXmlPayloadData(request.eClaimXml, cipherKey);
+            var cf5 = _cryptoEngine.EncryptXmlPayloadData(updatedCF5Xml, cipherKey);
+            var eclaims = _cryptoEngine.EncryptXmlPayloadData(updatedEClaimXml, cipherKey);
 
             var payload = new { cf5, eclaims };
             var encryptedPayloadDRG = JsonConvert.SerializeObject(payload);
@@ -1172,7 +1227,8 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteMockDecryptResponseAsync(MockDecryptedRequest request)
         {
-            var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            // var cipherKey = await GetCipherKeyAsync(request.pmcc);
+            var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
             var Newrequest = new
             {

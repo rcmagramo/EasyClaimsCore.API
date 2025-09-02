@@ -65,6 +65,7 @@ builder.Services.AddScoped<ICryptoEngine, CryptoEngine>();
 builder.Services.AddScoped<ISerializerEngine, SerializerEngine>();
 builder.Services.AddScoped<ITokenHandler, TokenHandler>();
 builder.Services.AddScoped<ICipherKeyService, CipherKeyService>(); // Add CipherKey service
+builder.Services.AddScoped<IHospitalService, HospitalService>(); // Add new HospitalService
 builder.Services.AddScoped<IServiceExecutor, ServiceExecutor>();
 builder.Services.AddScoped<IRequestLogger, RequestLogger>();
 builder.Services.AddScoped<IEClaimsService, EClaimsService>();

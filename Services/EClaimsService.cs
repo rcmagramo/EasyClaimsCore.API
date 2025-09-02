@@ -1059,7 +1059,6 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteClaimsUploadAsync(CommonAPIRequest request)
         {
-            // First validate the file if required (following ExecuteRestRequest pattern)
             var skipEClaimsFileCheck = _configuration.GetValue<bool>("PhilHealth:SkipEClaimsFileCheck", false);
 
             if (!skipEClaimsFileCheck)

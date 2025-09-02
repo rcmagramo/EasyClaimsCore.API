@@ -78,6 +78,8 @@ var retryPolicy = HttpPolicyExtensions
 
 var timeoutPolicy = Policy.TimeoutAsync<HttpResponseMessage>(TimeSpan.FromMinutes(5));
 
+builder.Services.AddScoped<IAPIRequestSuccessLogService, APIRequestSuccessLogService>();
+
 builder.Services.AddHttpClient("EClaimsClient", client =>
 {
     client.Timeout = TimeSpan.FromMinutes(10);

@@ -91,38 +91,28 @@ namespace EasyClaimsCore.API.Data
 
         private static void SeedAPIRequests(ModelBuilder modelBuilder)
         {
-            // Sample cipher keys and hospital codes for different hospitals
-            var hospitalData = new Dictionary<string, (string CipherKey, string HospitalCode)>
-            {
-                { "H92006568", ("PHilheaLthDuMmy311630", "311630") }, // Default hospital - staging
-                { "H12345678", ("YourActualCipherKey123", "311630") }, // Another hospital
-                { "H87654321", ("AnotherHospitalKey456", "311630") },  // Another hospital
-                // Add more hospitals as needed
-            };
+            // Only seed for the main hospital H92006568
+            var hospitalId = "H92006568";
+            var cipherKey = "PHilheaLthDuMmy311630";
+            var hospitalCode = "311630";
 
             var apiRequests = new List<APIRequest>();
             int currentId = 1;
 
-            // Create API requests for each hospital
-            foreach (var hospitalKvp in hospitalData)
-            {
-                var hospitalId = hospitalKvp.Key;
-                var (cipherKey, hospitalCode) = hospitalKvp.Value;
+            // Create API requests for H92006568 hospital only
+            var hospitalRequests = Enum.GetValues<RequestName>()
+                .Select(requestName => new APIRequest
+                {
+                    Id = currentId++, // Sequential unique ID starting from 1
+                    HospitalId = hospitalId,
+                    MethodName = requestName.ToString(),
+                    CipherKey = cipherKey,
+                    HospitalCode = hospitalCode,
+                    IsActive = true
+                })
+                .ToArray();
 
-                var hospitalRequests = Enum.GetValues<RequestName>()
-                    .Select(requestName => new APIRequest
-                    {
-                        Id = currentId++, // Sequential unique ID
-                        HospitalId = hospitalId,
-                        MethodName = requestName.ToString(),
-                        CipherKey = cipherKey,
-                        HospitalCode = hospitalCode, // Set HospitalCode
-                        IsActive = true
-                    })
-                    .ToArray();
-
-                apiRequests.AddRange(hospitalRequests);
-            }
+            apiRequests.AddRange(hospitalRequests);
 
             modelBuilder.Entity<APIRequest>().HasData(apiRequests.ToArray());
         }

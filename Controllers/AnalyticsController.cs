@@ -315,7 +315,7 @@ namespace EasyClaimsCore.API.Controllers
             <div class=""bg-white rounded-xl shadow-lg p-6 card-hover"">
                 <div class=""flex items-center justify-between"">
                     <div>
-                        <p class=""text-sm font-medium text-gray-600"">Last Response Time</p>
+                        <p class=""text-sm font-medium text-gray-600"">Response Time</p>
                         <p id=""lastResponseTime"" class=""text-3xl font-bold text-gray-900 mt-2"">0ms</p>
                         <p id=""lastResponseTimeChange"" class=""text-sm text-gray-500 mt-1"">latest API call</p>
                     </div>
@@ -353,7 +353,7 @@ namespace EasyClaimsCore.API.Controllers
             <div class=""bg-white rounded-xl shadow-lg p-6 card-hover"">
                 <div class=""flex items-center justify-between"">
                     <div>
-                        <p class=""text-sm font-medium text-gray-600"">Successful Uploads</p>
+                        <p class=""text-sm font-medium text-gray-600"">Claim Uploads</p>
                         <p id=""pendingUploads"" class=""text-3xl font-bold text-gray-900 mt-2"">0</p>
                         <p id=""pendingUploadsChange"" class=""text-sm text-gray-500 mt-1"">unbilled claims</p>
                     </div>

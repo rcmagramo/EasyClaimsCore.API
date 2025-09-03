@@ -5,6 +5,7 @@ using EasyClaimsCore.API.Models.Exceptions;
 using EasyClaimsCore.API.Models.Requests;
 using EasyClaimsCore.API.Models.Responses;
 using EasyClaimsCore.API.Security.Cryptography;
+using EasyClaimsCore.API.Security.Cryptography.DataContracts;
 using EasyClaimsCore.API.Serialization;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Newtonsoft.Json;
@@ -265,6 +266,14 @@ namespace EasyClaimsCore.API.Services
                 RequestName.MockDecryptResponseAPI,
                 request,
                 async (req) => await ExecuteMockDecryptResponseAsync(req));
+        }
+
+        public async Task<object> MockEncryptResponseAPI(CommonAPIRequest request)
+        {
+            return await _serviceExecutor.ExecuteServiceAsync(
+                RequestName.MockEncryptResponseAPI, // You'll need to add this to the enum
+                request,
+                async (req) => await ExecuteMockEncryptResponseAsync(req));
         }
 
         // Implementation methods following the ExecuteRestRequest pattern
@@ -1254,6 +1263,74 @@ namespace EasyClaimsCore.API.Services
             };
         }
 
+        private async Task<object> ExecuteMockEncryptResponseAsync(CommonAPIRequest request)
+        {
+            try
+            {
+                // Get hospital credentials (cipher key)
+                var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
+
+                // Validate that XML is provided
+                if (string.IsNullOrWhiteSpace(request.Xml))
+                {
+                    return new
+                    {
+                        Message = "XML data is required for encryption",
+                        Result = (object?)null,
+                        Success = false
+                    };
+                }
+
+                // Encrypt the XML payload using the crypto engine
+                var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(
+                    request.Xml,
+                    cipherKey,
+                    "text/xml");
+
+                // Deserialize the encrypted payload to extract components
+                var payloadObject = JsonConvert.DeserializeObject<Payload>(encryptedPayload);
+
+                if (payloadObject == null)
+                {
+                    return new
+                    {
+                        Message = "Failed to encrypt XML payload",
+                        Result = (object?)null,
+                        Success = false
+                    };
+                }
+
+                // Create MockDecryptRequest object with encrypted data
+                var mockDecryptResult = new MockDecryptRequest
+                {
+                    docMimeType = payloadObject.docMimeType,
+                    hash = payloadObject.hash,
+                    key1 = payloadObject.key1,
+                    key2 = payloadObject.key2,
+                    iv = payloadObject.iv,
+                    doc = payloadObject.doc
+                };
+
+                return new
+                {
+                    Message = "XML successfully encrypted",
+                    Result = mockDecryptResult,
+                    Success = true
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error encrypting XML payload for hospital {HospitalId}", request.pmcc);
+
+                return new
+                {
+                    Message = $"Failed to encrypt XML payload: {ex.Message}",
+                    Result = (object?)null,
+                    Success = false
+                };
+            }
+        }
+       
         // Helper methods
         private int GetClaimsCount(string xml)
         {

@@ -22,6 +22,7 @@
         eClaimsApiUpload = 18,
         FetchVoucherDetails = 19,
         isDRGValidAPI = 20,
-        MockDecryptResponseAPI = 21
+        MockDecryptResponseAPI = 21,
+        MockEncryptResponseAPI = 22
     }
 }

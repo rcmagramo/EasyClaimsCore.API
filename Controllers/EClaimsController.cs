@@ -235,6 +235,13 @@ namespace EasyClaimsCore.API.Controllers
             return HandleServiceResult(result);
         }
 
+        [HttpPost("mock-encrypt")]
+        public async Task<ActionResult<ApiResponse<object>>> MockEncryptResponse([FromBody] CommonAPIRequest request)
+        {
+            var result = await _eClaimsService.MockEncryptResponseAPI(request);
+            return HandleServiceResult(result);
+        }
+
         private ActionResult<ApiResponse<object>> HandleServiceResult(object result)
         {
             return result switch

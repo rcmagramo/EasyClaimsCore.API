@@ -13,5 +13,8 @@ namespace EasyClaimsCore.API.Services.Analytics
         Task<List<TrendDataDto>> GetTrendsAsync(DateTime? startDate = null, DateTime? endDate = null, string groupBy = "hour");
         Task<byte[]> ExportDataAsync(DateTime? startDate = null, DateTime? endDate = null, string format = "csv");
         Task<bool> GenerateSampleDataAsync();
+
+        // New method for pending uploads
+        Task<List<PendingUploadDto>> GetPendingUploadsAsync();
     }
 }

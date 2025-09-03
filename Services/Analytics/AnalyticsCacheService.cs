@@ -1,4 +1,6 @@
-﻿using EasyClaimsCore.API.Models.Analytics;
+﻿using EasyClaimsCore.API.Data;
+using EasyClaimsCore.API.Models.Analytics;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using System.Collections;
 using System.Text.Json;
@@ -179,6 +181,8 @@ namespace EasyClaimsCore.API.Services.Analytics
         private readonly AnalyticsService _baseService;
         private readonly IAnalyticsCacheService _cacheService;
         private readonly ILogger<CachedAnalyticsService> _logger;
+        private readonly ApplicationDbContext _dbContext;
+
 
         public CachedAnalyticsService(
             AnalyticsService baseService,
@@ -199,6 +203,37 @@ namespace EasyClaimsCore.API.Services.Analytics
                 () => _baseService.GetOverviewAsync(startDate, endDate),
                 TimeSpan.FromMinutes(2)
             );
+        }
+
+        public async Task<List<PendingUploadDto>> GetPendingUploadsAsync()
+        {
+            try
+            {
+                var pendingUploads = await _dbContext.APIRequestSuccessLogs
+                    .Where(log => log.IsBilled == false && log.IsActive == true)
+                    .Join(_dbContext.APIRequests,
+                          log => log.APIRequestId,
+                          req => req.Id,
+                          (log, req) => new { log, req })
+                    .Where(x => x.req.MethodName == "eClaimsApiUpload")
+                    .GroupBy(x => x.log.Pmcc)
+                    .Select(g => new PendingUploadDto
+                    {
+                        Pmcc = g.Key,
+                        PendingCount = g.Count(),
+                        LastUpload = g.Max(x => x.log.Requested),
+                        TotalBillAmount = g.Sum(x => x.log.BillAmount)
+                    })
+                    .OrderByDescending(p => p.PendingCount)
+                    .ToListAsync();
+
+                return pendingUploads;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting pending uploads data");
+                return new List<PendingUploadDto>();
+            }
         }
 
         public async Task<List<ApiUsageDto>> GetApiUsageAsync(DateTime? startDate = null, DateTime? endDate = null, string? hospitalId = null)

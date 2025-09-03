@@ -33,13 +33,17 @@ namespace EasyClaimsCore.API.Services.Analytics
                 var failedCalls = totalCalls - successfulCalls;
                 var successRate = totalCalls > 0 ? (double)successfulCalls / totalCalls * 100 : 0;
 
-                // Calculate average response time from logs that have response times
-                var responseTimes = logs
+                // Get the last response time instead of average
+                var lastResponseTime = 0.0;
+                var lastLogWithResponseTime = logs
                     .Where(l => l.Requested != null && l.Responded != null)
-                    .Select(l => (l.Responded!.Value - l.Requested).TotalMilliseconds)
-                    .ToList();
+                    .OrderByDescending(l => l.Requested)
+                    .FirstOrDefault();
 
-                var averageResponseTime = responseTimes.Any() ? responseTimes.Average() : 0;
+                if (lastLogWithResponseTime != null)
+                {
+                    lastResponseTime = (lastLogWithResponseTime.Responded!.Value - lastLogWithResponseTime.Requested).TotalMilliseconds;
+                }
 
                 var activeHospitals = await _dbContext.APIRequestLogs
                     .Join(_dbContext.APIRequests, log => log.APIRequestId, req => req.Id, (log, req) => new { log, req })
@@ -56,7 +60,7 @@ namespace EasyClaimsCore.API.Services.Analytics
                     SuccessfulCalls = successfulCalls,
                     FailedCalls = failedCalls,
                     SuccessRate = Math.Round(successRate, 1),
-                    AverageResponseTime = Math.Round(averageResponseTime, 2),
+                    LastResponseTime = Math.Round(lastResponseTime, 2), // Changed from AverageResponseTime
                     ActiveHospitals = activeHospitals,
                     TotalChargeableItems = totalChargeableItems
                 };
@@ -72,10 +76,41 @@ namespace EasyClaimsCore.API.Services.Analytics
                     SuccessfulCalls = 0,
                     FailedCalls = 0,
                     SuccessRate = 0,
-                    AverageResponseTime = 0,
+                    LastResponseTime = 0, // Changed from AverageResponseTime
                     ActiveHospitals = 0,
                     TotalChargeableItems = 0
                 };
+            }
+        }
+
+        public async Task<List<PendingUploadDto>> GetPendingUploadsAsync()
+        {
+            try
+            {
+                var pendingUploads = await _dbContext.APIRequestSuccessLogs
+                    .Where(log => log.IsBilled == false && log.IsActive == true)
+                    .Join(_dbContext.APIRequests,
+                          log => log.APIRequestId,
+                          req => req.Id,
+                          (log, req) => new { log, req })
+                    .Where(x => x.req.MethodName == "eClaimsApiUpload")
+                    .GroupBy(x => x.log.Pmcc)
+                    .Select(g => new PendingUploadDto
+                    {
+                        Pmcc = g.Key,
+                        PendingCount = g.Count(),
+                        LastUpload = g.Max(x => x.log.Requested),
+                        TotalBillAmount = g.Sum(x => x.log.BillAmount)
+                    })
+                    .OrderByDescending(p => p.PendingCount)
+                    .ToListAsync();
+
+                return pendingUploads;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting pending uploads data");
+                return new List<PendingUploadDto>();
             }
         }
 

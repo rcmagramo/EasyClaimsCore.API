@@ -6,10 +6,19 @@
         public int SuccessfulCalls { get; set; }
         public int FailedCalls { get; set; }
         public double SuccessRate { get; set; }
-        public double AverageResponseTime { get; set; }
+        public double LastResponseTime { get; set; } // Changed from AverageResponseTime
         public int ActiveHospitals { get; set; }
         public int TotalChargeableItems { get; set; }
         public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+    }
+
+    // New DTO for pending uploads
+    public class PendingUploadDto
+    {
+        public string Pmcc { get; set; } = string.Empty;
+        public int PendingCount { get; set; }
+        public DateTime LastUpload { get; set; }
+        public decimal TotalBillAmount { get; set; }
     }
 
     public class ApiUsageDto

@@ -34,6 +34,17 @@ namespace EasyClaimsCore.API.Controllers
         }
 
         /// <summary>
+        /// Get pending uploads by PMCC
+        /// </summary>
+        [HttpGet("pending-uploads")]
+        [ApiExplorerSettings(IgnoreApi = true)]
+        public async Task<ActionResult<ApiResponse<object>>> GetPendingUploads()
+        {
+            var pendingUploads = await _analyticsService.GetPendingUploadsAsync();
+            return Ok(ApiResponse<object>.CreateSuccess(pendingUploads));
+        }
+
+        /// <summary>
         /// Get API usage statistics by endpoint
         /// </summary>
         [HttpGet("api-usage")]
@@ -261,7 +272,7 @@ namespace EasyClaimsCore.API.Controllers
     <!-- Main Content -->
     <main class=""max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"">
         <!-- Overview Cards -->
-        <div class=""grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"">
+        <div class=""grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8"">
             <!-- Total API Calls -->
             <div class=""bg-white rounded-xl shadow-lg p-6 card-hover"">
                 <div class=""flex items-center justify-between"">
@@ -300,13 +311,13 @@ namespace EasyClaimsCore.API.Controllers
                 </div>
             </div>
             
-            <!-- Average Response Time -->
+            <!-- Last Response Time -->
             <div class=""bg-white rounded-xl shadow-lg p-6 card-hover"">
                 <div class=""flex items-center justify-between"">
                     <div>
-                        <p class=""text-sm font-medium text-gray-600"">Avg Response Time</p>
-                        <p id=""avgResponseTime"" class=""text-3xl font-bold text-gray-900 mt-2"">0ms</p>
-                        <p id=""avgResponseTimeChange"" class=""text-sm text-gray-500 mt-1"">vs previous period</p>
+                        <p class=""text-sm font-medium text-gray-600"">Last Response Time</p>
+                        <p id=""lastResponseTime"" class=""text-3xl font-bold text-gray-900 mt-2"">0ms</p>
+                        <p id=""lastResponseTimeChange"" class=""text-sm text-gray-500 mt-1"">latest API call</p>
                     </div>
                     <div class=""p-3 bg-yellow-100 rounded-full"">
                         <i class=""fas fa-clock text-xl text-yellow-600""></i>
@@ -334,6 +345,25 @@ namespace EasyClaimsCore.API.Controllers
                 <div class=""mt-4"">
                     <div class=""w-full bg-gray-200 rounded-full h-2"">
                         <div id=""hospitalsProgress"" class=""bg-purple-600 h-2 rounded-full transition-all duration-500"" style=""width: 0%""></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pending Uploads -->
+            <div class=""bg-white rounded-xl shadow-lg p-6 card-hover"">
+                <div class=""flex items-center justify-between"">
+                    <div>
+                        <p class=""text-sm font-medium text-gray-600"">Successful Uploads</p>
+                        <p id=""pendingUploads"" class=""text-3xl font-bold text-gray-900 mt-2"">0</p>
+                        <p id=""pendingUploadsChange"" class=""text-sm text-gray-500 mt-1"">unbilled claims</p>
+                    </div>
+                    <div class=""p-3 bg-orange-100 rounded-full"">
+                        <i class=""fas fa-upload text-xl text-orange-600""></i>
+                    </div>
+                </div>
+                <div class=""mt-4"">
+                    <div class=""w-full bg-gray-200 rounded-full h-2"">
+                        <div id=""pendingUploadsProgress"" class=""bg-orange-600 h-2 rounded-full transition-all duration-500"" style=""width: 0%""></div>
                     </div>
                 </div>
             </div>
@@ -406,14 +436,29 @@ namespace EasyClaimsCore.API.Controllers
             </div>
         </div>
 
-        <!-- Top Hospitals -->
-        <div class=""bg-white rounded-xl shadow-lg card-hover"">
-            <div class=""px-6 py-4 border-b border-gray-200"">
-                <h3 class=""text-lg font-semibold text-gray-900"">Top Hospitals</h3>
+        <!-- Pending Uploads and Top Hospitals Row -->
+        <div class=""grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"">
+            <!-- Pending Uploads by PMCC -->
+            <div class=""bg-white rounded-xl shadow-lg card-hover"">
+                <div class=""px-6 py-4 border-b border-gray-200"">
+                    <h3 class=""text-lg font-semibold text-gray-900"">Unbilled Claims by Hospital</h3>
+                </div>
+                <div class=""p-6"">
+                    <div id=""pendingUploadsList"" class=""space-y-3 max-h-96 overflow-y-auto"">
+                        <!-- Pending uploads will be inserted here -->
+                    </div>
+                </div>
             </div>
-            <div class=""p-6"">
-                <div id=""topHospitals"" class=""grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto"">
-                    <!-- Hospital stats will be inserted here -->
+
+            <!-- Top Hospitals -->
+            <div class=""bg-white rounded-xl shadow-lg card-hover"">
+                <div class=""px-6 py-4 border-b border-gray-200"">
+                    <h3 class=""text-lg font-semibold text-gray-900"">Top Hospitals</h3>
+                </div>
+                <div class=""p-6"">
+                    <div id=""topHospitals"" class=""grid grid-cols-1 gap-4 max-h-96 overflow-y-auto"">
+                        <!-- Hospital stats will be inserted here -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -485,6 +530,17 @@ namespace EasyClaimsCore.API.Controllers
                 } else {
                     console.error('Invalid overview response structure:', overview);
                     updateOverviewCards({});
+                }
+
+                // Load pending uploads data
+                console.log('Fetching pending uploads...');
+                const pendingUploadsResponse = await fetch(`${API_BASE}/pending-uploads`);
+                if (pendingUploadsResponse.ok) {
+                    const pendingUploads = await pendingUploadsResponse.json();
+                    console.log('Pending uploads response:', pendingUploads);
+                    if (pendingUploads && pendingUploads.success && pendingUploads.data) {
+                        updatePendingUploads(pendingUploads.data);
+                    }
                 }
                 
                 // Load API usage data for charts
@@ -595,22 +651,56 @@ namespace EasyClaimsCore.API.Controllers
             // Extract values with defaults
             const totalCalls = data.totalCalls || 0;
             const successRate = data.successRate || 0;
-            const avgResponseTime = data.averageResponseTime || 0;
+            const lastResponseTime = data.lastResponseTime || 0;
             const activeHospitals = data.activeHospitals || 0;
             
-            console.log('Updating with values:', { totalCalls, successRate, avgResponseTime, activeHospitals });
+            console.log('Updating with values:', { totalCalls, successRate, lastResponseTime, activeHospitals });
             
             // Update text content
             document.getElementById('totalCalls').textContent = totalCalls.toLocaleString();
             document.getElementById('successRate').textContent = successRate.toFixed(1) + '%';
-            document.getElementById('avgResponseTime').textContent = Math.round(avgResponseTime) + 'ms';
+            document.getElementById('lastResponseTime').textContent = Math.round(lastResponseTime) + 'ms';
             document.getElementById('activeHospitals').textContent = activeHospitals.toString();
             
             // Update progress bars
             updateProgressBar('totalCallsProgress', Math.min(100, totalCalls / 100));
             updateProgressBar('successRateProgress', successRate);
-            updateProgressBar('responseTimeProgress', Math.max(0, 100 - (avgResponseTime / 50)));
+            updateProgressBar('responseTimeProgress', Math.max(0, 100 - (lastResponseTime / 50)));
             updateProgressBar('hospitalsProgress', Math.min(100, activeHospitals * 20));
+        }
+
+        function updatePendingUploads(data) {
+            console.log('updatePendingUploads called with:', data);
+            
+            const container = document.getElementById('pendingUploadsList');
+            const totalPending = Array.isArray(data) ? data.reduce((sum, item) => sum + (item.pendingCount || 0), 0) : 0;
+            
+            // Update the pending uploads card
+            document.getElementById('pendingUploads').textContent = totalPending.toString();
+            updateProgressBar('pendingUploadsProgress', Math.min(100, totalPending * 2));
+            
+            if (!data || !Array.isArray(data) || data.length === 0) {
+                container.innerHTML = '<p class=""text-gray-500 text-center py-4"">No pending uploads</p>';
+                return;
+            }
+            
+            container.innerHTML = data.map((item, index) => `
+                <div class=""flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors"">
+                    <div class=""flex items-center space-x-3"">
+                        <span class=""flex items-center justify-center w-8 h-8 bg-orange-100 text-orange-800 text-sm font-medium rounded-full"">
+                            ${index + 1}
+                        </span>
+                        <div>
+                            <p class=""text-sm font-medium text-gray-900"">${item.pmcc || 'Unknown'}</p>
+                            <p class=""text-xs text-gray-500"">${item.pendingCount || 0} uploads • ₱${item.totalBillAmount || 0}</p>
+                        </div>
+                    </div>
+                    <div class=""text-right"">
+                        <div class=""text-sm font-medium text-gray-900"">${formatTimestamp(item.lastUpload)}</div>
+                        <div class=""text-xs text-gray-500"">Last upload</div>
+                    </div>
+                </div>
+            `).join('');
         }
         
         function updateProgressBar(elementId, percentage) {
@@ -862,7 +952,7 @@ namespace EasyClaimsCore.API.Controllers
         }
         
         function showLoadingSkeletons(show) {
-            const elements = ['totalCalls', 'successRate', 'avgResponseTime', 'activeHospitals'];
+            const elements = ['totalCalls', 'successRate', 'lastResponseTime', 'activeHospitals', 'pendingUploads'];
             elements.forEach(id => {
                 const element = document.getElementById(id);
                 if (element) {

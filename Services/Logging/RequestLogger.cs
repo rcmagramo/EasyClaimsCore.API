@@ -72,8 +72,8 @@ namespace EasyClaimsCore.API.Services.Logging
             {
                 var responseString = response?.ToString() ?? "No response";
 
-                // Mask sensitive data in logs
-                responseString = MaskSensitiveData(responseString);
+                //// Mask sensitive data in logs
+                //responseString = MaskSensitiveData(responseString);
 
                 log.Response = responseString;
                 log.Status = status.ToString();

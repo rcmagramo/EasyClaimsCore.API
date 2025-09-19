@@ -24,15 +24,21 @@ namespace EasyClaimsCore.API.Services
                 // Extract PMCC from RequestData
                 var pmcc = ExtractPmccFromRequestData(originalLog.RequestData);
 
+                // Clean RequestData to keep only Xml field
+                var cleanedRequestData = CleanRequestDataForSuccessLog(originalLog.RequestData);
+
+                // Clean Response data to keep only XML content
+                var cleanedResponse = CleanResponseDataForSuccessLog(originalLog.Response);
+
                 // Get current bill amount
                 var billAmount = await GetCurrentBillAmountAsync();
-
+                
                 var successLog = new APIRequestSuccessLog
                 {
                     APIRequestId = originalLog.APIRequestId,
                     ChargeableItems = originalLog.ChargeableItems,
-                    RequestData = originalLog.RequestData,
-                    Response = originalLog.Response,
+                    RequestData = cleanedRequestData, // Use cleaned data
+                    Response = cleanedResponse, // Use cleaned response
                     Status = originalLog.Status,
                     Requested = originalLog.Requested,
                     Responded = originalLog.Responded,
@@ -127,6 +133,102 @@ namespace EasyClaimsCore.API.Services
                 _logger.LogWarning(ex, "Could not extract PMCC from request data: {RequestData}",
                     requestData?.Length > 100 ? requestData.Substring(0, 100) + "..." : requestData);
                 return string.Empty;
+            }
+        }
+
+        private string CleanResponseDataForSuccessLog(string? responseData)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(responseData))
+                    return string.Empty;
+
+                // Handle case where response is already clean XML
+                if (responseData.Trim().StartsWith("<") && responseData.Trim().EndsWith(">"))
+                {
+                    return responseData.Trim();
+                }
+
+                // Handle case where response has format: { Message = , Result = <XML...> }
+                // or similar patterns
+                var response = responseData.Trim();
+
+                // Look for "Result =" pattern and extract XML after it
+                var resultPattern = "Result =";
+                var resultIndex = response.IndexOf(resultPattern, StringComparison.OrdinalIgnoreCase);
+
+                if (resultIndex >= 0)
+                {
+                    // Extract everything after "Result ="
+                    var xmlStart = resultIndex + resultPattern.Length;
+                    var xmlContent = response.Substring(xmlStart).Trim();
+
+                    // Remove trailing "}" or other unwanted characters
+                    if (xmlContent.EndsWith("}"))
+                    {
+                        xmlContent = xmlContent.Substring(0, xmlContent.Length - 1).Trim();
+                    }
+
+                    // Find the actual XML content (should start with < and end with >)
+                    var firstAngleBracket = xmlContent.IndexOf('<');
+                    if (firstAngleBracket >= 0)
+                    {
+                        xmlContent = xmlContent.Substring(firstAngleBracket);
+
+                        // Find the last closing angle bracket for the XML tag
+                        var lastAngleBracket = xmlContent.LastIndexOf('>');
+                        if (lastAngleBracket >= 0)
+                        {
+                            xmlContent = xmlContent.Substring(0, lastAngleBracket + 1);
+                        }
+                    }
+
+                    return xmlContent.Trim();
+                }
+
+                // If no "Result =" pattern found, look for XML content directly
+                var firstXmlTag = response.IndexOf('<');
+                var lastXmlTag = response.LastIndexOf('>');
+
+                if (firstXmlTag >= 0 && lastXmlTag > firstXmlTag)
+                {
+                    return response.Substring(firstXmlTag, lastXmlTag - firstXmlTag + 1);
+                }
+
+                // If no XML found, return original
+                return responseData;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not clean response data, using original: {ResponseData}",
+                    responseData?.Length > 100 ? responseData.Substring(0, 100) + "..." : responseData);
+                return responseData ?? string.Empty; // Return original if cleaning fails
+            }
+        }
+
+        private string CleanRequestDataForSuccessLog(string requestData)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(requestData))
+                    return string.Empty;
+
+                var jsonObject = JObject.Parse(requestData);
+
+                // Create new JSON object with only the Xml field
+                var cleanedObject = new JObject();
+                if (jsonObject["Xml"] != null)
+                {
+                    cleanedObject["Xml"] = jsonObject["Xml"];
+                }
+
+                return JsonConvert.SerializeObject(cleanedObject, Formatting.None);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not clean request data, using original: {RequestData}",
+                    requestData?.Length > 100 ? requestData.Substring(0, 100) + "..." : requestData);
+                return requestData; // Return original if cleaning fails
             }
         }
     }

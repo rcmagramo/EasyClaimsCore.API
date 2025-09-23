@@ -10,6 +10,7 @@ using Newtonsoft.Json.Linq;
 
 namespace EasyClaimsCore.API.Controllers
 {
+    
     //[Authorize]
     [ApiController]
     [Route("api/[controller]")]

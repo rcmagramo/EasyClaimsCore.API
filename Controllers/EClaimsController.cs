@@ -29,7 +29,7 @@ namespace EasyClaimsCore.API.Controllers
         /// <summary>
         /// Generates authentication token for API access
         /// </summary>
-        [HttpPost("token")]
+        [HttpPost("get-token")]
         //[ApiExplorerSettings(IgnoreApi = true)]
         //[Authorize]
         public async Task<ActionResult<ApiResponse<object>>> GetToken([FromBody] TokenRequest request)

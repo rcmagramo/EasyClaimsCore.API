@@ -5,6 +5,7 @@
         public string pmcc { get; set; } = string.Empty;
         public string certificateId { get; set; } = string.Empty;
         public string VoucherNo { get; set; } = string.Empty;
+        public string token { get; set; } = string.Empty;
     }
 
     public class VoucherRequest

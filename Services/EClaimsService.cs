@@ -284,7 +284,7 @@ namespace EasyClaimsCore.API.Services
             var url = $"{_restBaseUrl}PHIC/Claims3.0/getToken";
 
             httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("accreditationNo", request.accreditationNo);
+            httpClient.DefaultRequestHeaders.Add("accreditationNo", request.pmcc);
             httpClient.DefaultRequestHeaders.Add("softwareCertificateId", _euroCertificate);
 
             var response = await httpClient.GetAsync(url);
@@ -309,7 +309,7 @@ namespace EasyClaimsCore.API.Services
                 birthdate = request.birthdate ?? ""
             };
 
-            var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var newtoken = request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             //var cipherKey = await GetCipherKeyAsync(request.pmcc); // Get cipher key from database
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
@@ -354,7 +354,7 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteCaseRateSearchAsync(CaseRateRestRequest request)
         {
-            var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var newtoken = request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
             var payload = new
@@ -443,7 +443,7 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteServerDateTimeAsync(TokenCredentialsRequest request)
         {
-            var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var newtoken = request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             ClearHeaders();
             AddHeaders(new Dictionary<string, string> { { "token", newtoken } });
             var url = $"{_restBaseUrl}PHIC/Claims3.0/getServerDateTime";
@@ -480,7 +480,7 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteDatabaseDateTimeAsync(TokenCredentialsRequest request)
         {
-            var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var newtoken = request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             ClearHeaders();
             AddHeaders(new Dictionary<string, string> { { "token", newtoken } });
             var url = $"{_restBaseUrl}PHIC/Claims3.0/getDBServerDateTime";
@@ -523,7 +523,7 @@ namespace EasyClaimsCore.API.Services
                     birthdate = request.birthdate ?? ""
                 };
 
-                var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+                var token = request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
                 var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
                 var encryptedPayload = _cryptoEngine.EncryptXmlPayloadData(
@@ -577,7 +577,7 @@ namespace EasyClaimsCore.API.Services
                 dischargedate = request.dischargedate ?? ""
             };
 
-            var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var token = request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
             var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
@@ -612,7 +612,7 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteServerVersionAsync(TokenCredentialsRequest request)
         {
-            var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var token = request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
             httpClient.DefaultRequestHeaders.Clear();
             httpClient.DefaultRequestHeaders.Add("token", token);
@@ -642,7 +642,7 @@ namespace EasyClaimsCore.API.Services
                 employername = request.employername?.ToString()?.Trim('%') ?? ""
             };
 
-            var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var token = request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             //var cipherKey = await GetCipherKeyAsync(request.pmcc);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
             var httpClient = _httpClientFactory.CreateClient("EClaimsClient");
@@ -688,7 +688,7 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteUploadedClaimsMapAsync(UploadedClaimsMapRestRequest request)
         {
-            var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var newtoken = request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
             ClearHeaders();
             AddHeaders(new Dictionary<string, string> { { "token", newtoken } });
@@ -714,7 +714,7 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteClaimStatusAsync(ClaimStatusApiRequest request)
         {
-            var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var token = request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
             ClearHeaders();
@@ -756,7 +756,7 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteEligibilityCheckAsync(EligibilityRequestViewModel request)
         {
-            var newtoken = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var newtoken = request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             //var cipherKey = await GetCipherKeyAsync(request.pmcc);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
@@ -805,7 +805,7 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteVoucherDetailsAsync(VoucherRestRequest request)
         {
-            var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var token = request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
             ClearHeaders();
@@ -848,7 +848,7 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteEClaimsFileCheckAsync(CommonAPIRequest request)
         {
-            var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var token = request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
             var _certificate = _configuration.GetValue<string>("PhilHealth:EuroCertificate");
 
@@ -912,7 +912,7 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteESOAValidationAsync(CommonAPIRequest request)
         {
-            var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var token = request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
             var _certificate = _configuration.GetValue<string>("PhilHealth:EuroCertificate");
 
@@ -971,7 +971,7 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteAddRequiredDocumentAsync(RequiredApiDocumentRequest request)
         {
-            var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var token = request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             //var cipherKey = await GetCipherKeyAsync(request.pmcc);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
@@ -1040,7 +1040,7 @@ namespace EasyClaimsCore.API.Services
 
             var jsonRequest = JsonConvert.SerializeObject(requestData);
 
-            var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var token =request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             //var cipherKey = await GetCipherKeyAsync(request.pmcc);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
 
@@ -1085,7 +1085,7 @@ namespace EasyClaimsCore.API.Services
                 }
             }
 
-            var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var token = request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
             var _certificate = _configuration.GetValue<string>("PhilHealth:EuroCertificate");
 
@@ -1129,7 +1129,7 @@ namespace EasyClaimsCore.API.Services
 
         private async Task<object> ExecuteDRGValidationAsync(DRGRequest request)
         {
-            var token = await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
+            var token = request.token.Trim(); //await _tokenHandler.MakeApiRequestAsync(request.pmcc, _euroCertificate);
             var (hospitalCode, cipherKey) = await GetHospitalCredentialsAsync(request.pmcc);
             var _certificate = _configuration.GetValue<string>("PhilHealth:EuroCertificate");
 

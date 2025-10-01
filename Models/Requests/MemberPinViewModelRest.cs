@@ -4,6 +4,7 @@
     {
         public string pmcc { get; set; } = string.Empty;
         public string? certificateId { get; set; } = string.Empty;
+        public string token { get; set; } = string.Empty;
         public string lastname { get; set; } = string.Empty;
         public string firstname { get; set; } = string.Empty;
         public string middlename { get; set; } = string.Empty;

@@ -4,6 +4,7 @@
     {
         public string pmcc { get; set; } = string.Empty;
         public string certificateId { get; set; } = string.Empty;
+        public string token { get; set; } = string.Empty;
         public string hospitalCode { get; set; } = string.Empty;
         public string isForOPDHemodialysisClaim { get; set; } = string.Empty;
         public string memberPIN { get; set; } = string.Empty;

@@ -30,8 +30,8 @@ namespace EasyClaimsCore.API.Controllers
         /// Generates authentication token for API access
         /// </summary>
         [HttpPost("token")]
-        [ApiExplorerSettings(IgnoreApi = true)]
-        [Authorize]
+        //[ApiExplorerSettings(IgnoreApi = true)]
+        //[Authorize]
         public async Task<ActionResult<ApiResponse<object>>> GetToken([FromBody] TokenRequest request)
         {
             var result = await _eClaimsService.GetRestTokenAsync(request);
